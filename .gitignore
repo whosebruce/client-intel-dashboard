@@ -1,0 +1,28 @@
+# Private/raw customer data - never commit
+/data/raw/**
+/data/processed/**
+/dashboard/clients.json
+
+# Keep folder placeholders if added later
+!/data/raw/
+!/data/raw/csv/
+!/data/raw/sms/
+!/data/raw/google_takeout/
+!/data/raw/sheets/
+!/data/raw/**/.gitkeep
+!/data/processed/
+!/data/processed/.gitkeep
+
+# Local runtime
+*.log
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
+
