@@ -93,6 +93,24 @@ The agent may inspect the sheet headers locally and map messy CRM columns into t
 
 If the agent has Google Sheets API access, it may export the sheet to CSV locally, but it should not print private rows into chat. Report only counts and file paths.
 
+## Exact-address geocoding
+
+If the CRM rows have street addresses but no `lat`/`lng`, use Google Maps Geocoding locally:
+
+```bash
+export GOOGLE_MAPS_API_KEY="<local key, never commit>"
+python3 scripts/ingest.py --json --geocode
+```
+
+Rules:
+
+- The key must stay in the local shell/service environment only.
+- Do not paste the key into chat.
+- Do not commit `.env` or generated geocoded customer data.
+- Confirm the final summary includes `geocoding_enabled: true` and `geocoded: <count>`.
+- Use `--refresh-geocodes` if imported rows already contain approximate/city-level coordinates that should be replaced with exact Google coordinates.
+- If the key is missing, ask the human to add one or require the CRM to include `lat` and `lng` columns.
+
 ## Duplicate handling
 
 `scripts/ingest.py --json` reports duplicate detection:

@@ -19,7 +19,11 @@ import argparse
 import csv
 import hashlib
 import json
+import os
 import re
+import time
+import urllib.parse
+import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass, asdict
@@ -294,6 +298,48 @@ def duplicate_report(records: list[ClientRecord]) -> dict[str, Any]:
     return {"groups": groups, "count": len(groups), "records_in_groups": sum(g["count"] for g in groups)}
 
 
+def geocode_one(rec: ClientRecord, api_key: str, refresh: bool = False) -> bool:
+    if not refresh and rec.lat is not None and rec.lng is not None and rec.confidence != "city-level":
+        return False
+    query = rec.address or ", ".join(x for x in [rec.name, rec.city] if x)
+    if not query:
+        return False
+    params = urllib.parse.urlencode({"address": query, "key": api_key})
+    url = f"https://maps.googleapis.com/maps/api/geocode/json?{params}"
+    with urllib.request.urlopen(url, timeout=12) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    if data.get("status") != "OK" or not data.get("results"):
+        return False
+    result = data["results"][0]
+    loc = result.get("geometry", {}).get("location", {})
+    lat, lng = loc.get("lat"), loc.get("lng")
+    if lat is None or lng is None:
+        return False
+    rec.lat, rec.lng = float(lat), float(lng)
+    formatted = result.get("formatted_address")
+    if formatted:
+        rec.address = formatted
+    rec.confidence = "exact-geocode"
+    rec.evidence = (rec.evidence or []) + ["Geocoded with Google Maps Geocoding API"]
+    return True
+
+
+def geocode_records(records: list[ClientRecord], api_key: str | None, limit: int = 250, refresh: bool = False) -> int:
+    if not api_key:
+        return 0
+    changed = 0
+    for rec in records:
+        if changed >= limit:
+            break
+        try:
+            if geocode_one(rec, api_key, refresh=refresh):
+                changed += 1
+                time.sleep(0.05)
+        except Exception as exc:
+            rec.evidence = (rec.evidence or []) + [f"Google geocode failed: {type(exc).__name__}"]
+    return changed
+
+
 def merge_records(records: list[ClientRecord]) -> list[ClientRecord]:
     merged: dict[str, ClientRecord] = {}
     for rec in records:
@@ -336,15 +382,21 @@ def write_outputs(records: list[ClientRecord]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--json", action="store_true", help="print summary JSON")
+    parser.add_argument("--geocode", action="store_true", help="use GOOGLE_MAPS_API_KEY to geocode records missing lat/lng")
+    parser.add_argument("--geocode-limit", type=int, default=250, help="maximum addresses to geocode per run")
+    parser.add_argument("--refresh-geocodes", action="store_true", help="re-geocode records even if lat/lng already exist")
     args = parser.parse_args()
     raw_records = parse_csv_files() + parse_xlsx_files() + parse_sms_files()
     duplicates = duplicate_report(raw_records)
+    geocoded = geocode_records(raw_records, os.environ.get("GOOGLE_MAPS_API_KEY") if args.geocode else None, args.geocode_limit, args.refresh_geocodes)
     records = merge_records(raw_records)
     write_outputs(records)
     summary = {
         "raw_records": len(raw_records),
         "records": len(records),
         "merged_duplicates": max(0, len(raw_records) - len(records)),
+        "geocoded": geocoded,
+        "geocoding_enabled": bool(args.geocode and os.environ.get("GOOGLE_MAPS_API_KEY")),
         "duplicate_groups": duplicates["count"],
         "duplicate_records_in_groups": duplicates["records_in_groups"],
         "duplicates": duplicates["groups"][:10],

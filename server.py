@@ -105,8 +105,13 @@ class Handler(SimpleHTTPRequestHandler):
             saved.append(str(target.relative_to(ROOT)))
         if not saved:
             return self.json_response(400, {"ok": False, "error": "no upload files found"})
+        cmd = ["python3", str(ROOT / "scripts" / "ingest.py"), "--json"]
+        if os.environ.get("GOOGLE_MAPS_API_KEY"):
+            cmd.extend(["--geocode", "--geocode-limit", os.environ.get("GEOCODE_LIMIT", "50")])
+            if os.environ.get("GEOCODE_REFRESH") == "1":
+                cmd.append("--refresh-geocodes")
         proc = subprocess.run(
-            ["python3", str(ROOT / "scripts" / "ingest.py"), "--json"],
+            cmd,
             cwd=str(ROOT), text=True, capture_output=True, timeout=120,
         )
         try:

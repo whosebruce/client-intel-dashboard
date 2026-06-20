@@ -82,6 +82,31 @@ lead
 
 The UI displays `unpaid` as `due`.
 
+## Exact-address markers with Google Maps Geocoding
+
+If CRM rows do not already include `lat` and `lng`, the importer can use the Google Maps Geocoding API to convert street addresses into exact marker coordinates.
+
+1. Create a Google Maps Platform API key with the **Geocoding API** enabled.
+2. Do **not** commit the key. Set it locally:
+
+```bash
+export GOOGLE_MAPS_API_KEY="your-key-here"
+```
+
+3. Run:
+
+```bash
+python3 scripts/ingest.py --json --geocode
+```
+
+If the current CRM already has approximate/city-level coordinates and you want Google to replace them with exact street-address coordinates, run:
+
+```bash
+python3 scripts/ingest.py --json --geocode --refresh-geocodes
+```
+
+When `GOOGLE_MAPS_API_KEY` is present, `python3 server.py` also geocodes uploaded files automatically after **Load data**. The importer stores Google’s formatted address, `lat`, `lng`, and an `exact-geocode` confidence label in the generated local files only.
+
 ## Duplicate detection
 
 The importer reports and merges likely duplicates by:
