@@ -2,9 +2,9 @@
 
 Local-first dashboard for turning CRM spreadsheets, SMS exports, and other customer records into a browsable map + follow-up cockpit for a small/local business.
 
-The current UI is a dark, responsive map dashboard with:
+The current UI is a warm charcoal/sand, responsive map dashboard with:
 
-- territory map
+- territory map (Leaflet vendored in `dashboard/vendor/` — no CDN needed)
 - paid / due / lead status
 - client search and filters
 - selected-record details
