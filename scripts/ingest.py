@@ -35,6 +35,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW_CSV = ROOT / "data" / "raw" / "csv"
 RAW_SMS = ROOT / "data" / "raw" / "sms"
 RAW_SHEETS = ROOT / "data" / "raw" / "sheets"
+RAW_JSON = ROOT / "data" / "raw" / "json"
 PROCESSED = ROOT / "data" / "processed"
 DASHBOARD = ROOT / "dashboard"
 
@@ -100,17 +101,22 @@ def parse_float(v: Any) -> float | None:
         return None
 
 
+def normalize_key(key: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", str(key).strip().lower()).strip("_")
+
+
 def row_value(row: dict[str, Any], *names: str) -> str:
-    lowered = {str(k).strip().lower(): v for k, v in row.items()}
+    lowered = {normalize_key(str(k)): v for k, v in row.items()}
     for n in names:
-        if n in lowered and lowered[n] not in (None, ""):
-            return str(lowered[n]).strip()
+        key = normalize_key(n)
+        if key in lowered and lowered[key] not in (None, ""):
+            return str(lowered[key]).strip()
     return ""
 
 
 def record_from_row(row: dict[str, Any], source: str) -> ClientRecord:
     name = row_value(row, "name", "client", "client_name", "customer", "customer_name", "contact") or "Unknown client"
-    phone = row_value(row, "phone", "number", "mobile", "telephone")
+    phone = row_value(row, "phone", "phone_number", "number", "mobile", "telephone")
     address = row_value(row, "address", "street", "location", "service address", "service_address")
     notes = row_value(row, "notes", "note", "description", "summary")
     return ClientRecord(
@@ -124,7 +130,7 @@ def record_from_row(row: dict[str, Any], source: str) -> ClientRecord:
         phone=phone,
         last_contact=row_value(row, "last_contact", "last contact", "date", "last contacted"),
         value=row_value(row, "value", "amount", "payment", "invoice", "balance"),
-        follow_up=row_value(row, "follow_up", "followup", "follow up", "next_contact", "next contact"),
+        follow_up=row_value(row, "follow_up", "followup", "follow up", "next_contact", "next contact", "next_call", "next call"),
         notes=notes,
         confidence=row_value(row, "confidence") or "high",
         evidence=[f"Tabular row from {source}"],
@@ -137,6 +143,25 @@ def parse_csv_files() -> list[ClientRecord]:
     for path in sorted(RAW_CSV.glob("*.csv")):
         with path.open(newline="", encoding="utf-8-sig") as f:
             for row in csv.DictReader(f):
+                records.append(record_from_row(row, path.name))
+    return records
+
+
+def parse_json_files() -> list[ClientRecord]:
+    records: list[ClientRecord] = []
+    for path in sorted(RAW_JSON.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            rows = payload.get("clients") or payload.get("records") or payload.get("rows") or []
+        else:
+            rows = payload
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if isinstance(row, dict):
                 records.append(record_from_row(row, path.name))
     return records
 
@@ -386,7 +411,7 @@ def main() -> int:
     parser.add_argument("--geocode-limit", type=int, default=250, help="maximum addresses to geocode per run")
     parser.add_argument("--refresh-geocodes", action="store_true", help="re-geocode records even if lat/lng already exist")
     args = parser.parse_args()
-    raw_records = parse_csv_files() + parse_xlsx_files() + parse_sms_files()
+    raw_records = parse_csv_files() + parse_xlsx_files() + parse_json_files() + parse_sms_files()
     duplicates = duplicate_report(raw_records)
     geocoded = geocode_records(raw_records, os.environ.get("GOOGLE_MAPS_API_KEY") if args.geocode else None, args.geocode_limit, args.refresh_geocodes)
     records = merge_records(raw_records)

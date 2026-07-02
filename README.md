@@ -11,6 +11,8 @@ The current UI is a dark, responsive map dashboard with:
 - follow-up queue
 - local upload/import endpoint
 - duplicate detection in the importer
+- CSV/JSON/XLSX browser preview fallback
+- polished import-format docs for AI-agent handoff
 
 ## Quick start
 
@@ -55,7 +57,7 @@ Place files in:
 data/raw/csv/            CRM / Google Sheets CSV exports
 data/raw/sheets/         Excel/XLSX CRM exports
 data/raw/sms/            Android SMS Backup & Restore XML exports
-data/raw/google_takeout/ Google Takeout ZIP/JSON/MBox files for later parser support
+data/raw/json/           JSON arrays or {clients|records|rows:[...]} exports
 ```
 
 Then run:
@@ -64,7 +66,9 @@ Then run:
 python3 scripts/ingest.py --json
 ```
 
-## CSV format
+## CSV / XLSX / JSON format
+
+See [`docs/IMPORT_FORMAT.md`](docs/IMPORT_FORMAT.md) for a clean import schema, messy-header mapping examples, and agent handoff rules. A no-data header template is available at [`templates/client_import_template.csv`](templates/client_import_template.csv).
 
 Preferred columns:
 

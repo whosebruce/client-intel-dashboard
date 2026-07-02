@@ -38,7 +38,7 @@ Put exported/private files here on the target host:
 data/raw/csv/            CRM / Google Sheets CSV exports
 data/raw/sheets/         Excel/XLSX CRM exports
 data/raw/sms/            Android SMS Backup & Restore XML exports
-data/raw/google_takeout/ Google Takeout ZIP/JSON/MBox files for later parser support
+data/raw/json/           JSON arrays or {clients|records|rows:[...]} exports
 ```
 
 Then run:
@@ -57,7 +57,9 @@ dashboard/clients.json
 
 If `python3 server.py` is running, the dashboard **Load data** button uploads `.csv`, `.xlsx`, `.json`, `.xml`, or `.zip` files to the local backend, runs the importer, and refreshes the dashboard.
 
-## Expected CSV columns
+## Expected import format
+
+See [`docs/IMPORT_FORMAT.md`](docs/IMPORT_FORMAT.md) and [`templates/client_import_template.csv`](templates/client_import_template.csv).
 
 Use any useful subset of these columns:
 

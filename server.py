@@ -23,6 +23,7 @@ RAW_CSV = ROOT / "data" / "raw" / "csv"
 RAW_SMS = ROOT / "data" / "raw" / "sms"
 RAW_TAKEOUT = ROOT / "data" / "raw" / "google_takeout"
 RAW_SHEETS = ROOT / "data" / "raw" / "sheets"
+RAW_JSON = ROOT / "data" / "raw" / "json"
 
 SAFE_NAME = re.compile(r"[^A-Za-z0-9._ -]+")
 
@@ -41,7 +42,9 @@ def target_for(filename: str) -> Path:
         return RAW_SMS / filename
     if suffix == ".xlsx":
         return RAW_SHEETS / filename
-    if suffix in {".zip", ".json", ".mbox"}:
+    if suffix == ".json":
+        return RAW_JSON / filename
+    if suffix in {".zip", ".mbox"}:
         return RAW_TAKEOUT / filename
     return RAW_TAKEOUT / filename
 
@@ -50,11 +53,16 @@ class Handler(SimpleHTTPRequestHandler):
     server_version = "ClientIntelDashboard/0.1"
 
     def translate_path(self, path: str) -> str:
-        # Serve dashboard root at /
-        path = unquote(path.split("?", 1)[0].split("#", 1)[0])
-        if path == "/":
+        # Serve dashboard root at / and prevent path traversal outside dashboard/.
+        raw_path = unquote(path.split("?", 1)[0].split("#", 1)[0])
+        if raw_path == "/":
             return str(DASHBOARD / "index.html")
-        return str(DASHBOARD / path.lstrip("/"))
+        target = (DASHBOARD / raw_path.lstrip("/")).resolve()
+        try:
+            target.relative_to(DASHBOARD.resolve())
+        except ValueError:
+            return str(DASHBOARD / "index.html")
+        return str(target)
 
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
