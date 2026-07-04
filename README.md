@@ -151,3 +151,5 @@ The repository intentionally ships with no customer/example rows. Add private CR
 ## AI-agent handoff
 
 See [`AGENT_README.md`](AGENT_README.md) for copy/paste-safe instructions for another Hermes/AI agent to clone the repo, export a Google Sheet/CRM CSV locally, import it, and report only counts/paths/dashboard URL.
+
+For a high-effort Claude Code/Fable-style QA and geocoding pass, use [`docs/CLAUDE_CODE_FABLE5_HIGH_EFFORT_HANDOFF.md`](docs/CLAUDE_CODE_FABLE5_HIGH_EFFORT_HANDOFF.md).
