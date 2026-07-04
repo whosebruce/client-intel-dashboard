@@ -1,0 +1,6 @@
+name,address,city,lat,lng,status,phone,last_contact,value,follow_up,notes
+Test Alpha,"12 Demo St, Faketown, CA 90000",Faketown,32.7157,-117.1611,paid,555-000-0001,2026-06-01,$450,2026-07-08,synthetic QA row
+Test Beta,"12 Demo St, Faketown, CA 90000",Faketown,32.7157,-117.1611,unpaid,555-000-0002,2026-06-02,$220,2026-07-09,same coords as Alpha on purpose
+Test Gamma,"34 Sample Ave, Faketown, CA 90001",Faketown,32.7257,-117.1711,lead,555-000-0003,2026-06-03,,2026-07-10,synthetic lead
+Test Delta,"56 Placeholder Blvd, Faketown, CA 90002",Faketown,,,lead,555-000-0004,,,,no coords - needs geocoding
+Test Alpha,"12 Demo St, Faketown, CA 90000",Faketown,32.7157,-117.1611,paid,555-000-0001,2026-06-01,$450,2026-07-08,duplicate row on purpose

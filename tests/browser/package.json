@@ -1,0 +1,13 @@
+{
+  "name": "client-intel-dashboard-browser-qa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright button/map QA for the Client Intel Dashboard (synthetic data only)",
+  "type": "commonjs",
+  "scripts": {
+    "qa": "node qa.js"
+  },
+  "dependencies": {
+    "playwright": "^1.61.1"
+  }
+}

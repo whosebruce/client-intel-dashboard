@@ -109,7 +109,33 @@ If the current CRM already has approximate/city-level coordinates and you want G
 python3 scripts/ingest.py --json --geocode --refresh-geocodes
 ```
 
-When `GOOGLE_MAPS_API_KEY` is present, `python3 server.py` also geocodes uploaded files automatically after **Load data**. The importer stores Google’s formatted address, `lat`, `lng`, and an `exact-geocode` confidence label in the generated local files only.
+When `GOOGLE_MAPS_API_KEY` is present, `python3 server.py` also geocodes uploaded files automatically after **Load data**. The importer stores Google’s formatted address, `lat`, `lng`, and an `exact-geocode` confidence label in the generated local files only (`approx-geocode` when Google could only resolve a centroid rather than a rooftop/street address).
+
+The importer summary reports the geocoding outcome explicitly:
+
+```json
+{
+  "geocoding_enabled": true,
+  "geocoded": 12,
+  "geocoded_exact_street": 10,
+  "geocoded_approximate": 2,
+  "failed_geocodes": 1,
+  "kept_existing_coordinates": 30,
+  "records_without_coordinates_dropped": 1
+}
+```
+
+- `geocoded_exact_street` — coordinates came from an exact street-address match (ROOFTOP / RANGE_INTERPOLATED).
+- `kept_existing_coordinates` — rows that already had usable coordinates and were left alone (use `--refresh-geocodes` to replace them).
+- `records_without_coordinates_dropped` — rows that could not be mapped at all and were left out of the dashboard.
+
+## Map behavior: individual markers, never a heatmap
+
+The map intentionally has **no heatmap layer and no marker clustering**. Every mapped record is a discrete, clickable marker, so you can zoom in and inspect individual customers.
+
+When several records share the same exact coordinate (for example, two contacts at one address), the dashboard fans them into a small deterministic ring (~15 m offsets) so each marker stays individually visible and clickable at max zoom, and the marker popup notes how many records share that exact location. Nothing is silently collapsed.
+
+`Fit territory` frames the currently filtered markers (capped at zoom 13 so a single record doesn’t over-zoom); it never overrides a zoom level you set yourself — selecting rows keeps your zoom once you’re zoomed past 13.
 
 ## Duplicate detection
 
@@ -147,6 +173,22 @@ dashboard/clients.json
 ```
 
 The repository intentionally ships with no customer/example rows. Add private CRM exports locally after cloning.
+
+## Testing
+
+Deterministic Python tests (the Google geocoder is mocked — no network, no key needed):
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+Automated browser QA (Playwright, synthetic data only) covering every button, marker behavior, exports, and mobile tabs — see [`tests/browser/README.md`](tests/browser/README.md):
+
+```bash
+cd tests/browser && npm install && npx playwright install chromium && node qa.js http://127.0.0.1:8766/
+```
+
+A sanitized fixture for seeding QA data lives at `tests/fixtures/synthetic-clients.csv` (fake names/addresses only).
 
 ## AI-agent handoff
 

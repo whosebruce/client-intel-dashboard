@@ -54,6 +54,14 @@ python3 scripts/ingest.py --json --geocode
 
 Generated geocoded files are private and ignored by git.
 
+The summary distinguishes where coordinates came from:
+
+- `geocoded_exact_street` — exact street-address matches (ROOFTOP / RANGE_INTERPOLATED)
+- `geocoded_approximate` — Google could only resolve a centroid/approximate point
+- `kept_existing_coordinates` — rows already had usable lat/lng (replace with `--refresh-geocodes`)
+- `failed_geocodes` — rows Google could not resolve
+- `records_without_coordinates_dropped` — rows left off the map entirely
+
 ## What the other agent should report
 
 After import, report only counts/paths/URL/blockers — never raw customer rows:
@@ -62,5 +70,6 @@ After import, report only counts/paths/URL/blockers — never raw customer rows:
 - raw record count
 - final mapped record count
 - duplicate group count
+- geocoding outcome (`geocoding_enabled`, `geocoded`, `geocoded_exact_street`, `geocoded_approximate`, `failed_geocodes`, `kept_existing_coordinates`, `records_without_coordinates_dropped`)
 - dashboard URL
 - blockers such as missing `lat/lng` or missing geocoding key

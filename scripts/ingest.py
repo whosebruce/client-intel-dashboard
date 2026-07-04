@@ -323,49 +323,75 @@ def duplicate_report(records: list[ClientRecord]) -> dict[str, Any]:
     return {"groups": groups, "count": len(groups), "records_in_groups": sum(g["count"] for g in groups)}
 
 
-def geocode_one(rec: ClientRecord, api_key: str, refresh: bool = False) -> bool:
+def geocode_one(rec: ClientRecord, api_key: str, refresh: bool = False) -> str:
+    """Geocode one record in place.
+
+    Returns one of:
+      "skipped-existing"  record already had usable coordinates (kept as-is)
+      "skipped-no-query"  nothing to geocode with (no address/name/city)
+      "ok-street"         exact street-address geocode (ROOFTOP / RANGE_INTERPOLATED)
+      "ok-approx"         geocoded, but only to an approximate/centroid location
+      "failed"            Google returned no usable result
+    """
     if not refresh and rec.lat is not None and rec.lng is not None and rec.confidence != "city-level":
-        return False
+        return "skipped-existing"
     query = rec.address or ", ".join(x for x in [rec.name, rec.city] if x)
     if not query:
-        return False
+        return "skipped-no-query"
     params = urllib.parse.urlencode({"address": query, "key": api_key})
     url = f"https://maps.googleapis.com/maps/api/geocode/json?{params}"
     with urllib.request.urlopen(url, timeout=12) as resp:
         data = json.loads(resp.read().decode("utf-8"))
     if data.get("status") != "OK" or not data.get("results"):
-        return False
+        return "failed"
     result = data["results"][0]
     loc = result.get("geometry", {}).get("location", {})
     lat, lng = loc.get("lat"), loc.get("lng")
     if lat is None or lng is None:
-        return False
+        return "failed"
+    location_type = result.get("geometry", {}).get("location_type", "")
+    exact = bool(rec.address) and location_type in {"ROOFTOP", "RANGE_INTERPOLATED"}
     rec.lat, rec.lng = float(lat), float(lng)
     formatted = result.get("formatted_address")
     if formatted:
         rec.address = formatted
-    rec.confidence = "exact-geocode"
-    rec.evidence = (rec.evidence or []) + ["Geocoded with Google Maps Geocoding API"]
-    return True
+    rec.confidence = "exact-geocode" if exact else "approx-geocode"
+    rec.evidence = (rec.evidence or []) + [f"Geocoded with Google Maps Geocoding API ({location_type or 'unknown precision'})"]
+    return "ok-street" if exact else "ok-approx"
 
 
-def geocode_records(records: list[ClientRecord], api_key: str | None, limit: int = 250, refresh: bool = False) -> int:
+def geocode_records(records: list[ClientRecord], api_key: str | None, limit: int = 250, refresh: bool = False) -> dict[str, int]:
+    stats = {
+        "geocoded": 0,
+        "geocoded_exact_street": 0,
+        "geocoded_approximate": 0,
+        "failed_geocodes": 0,
+        "kept_existing_coordinates": 0,
+    }
     if not api_key:
-        return 0
-    changed = 0
+        return stats
     for rec in records:
-        if changed >= limit:
+        if stats["geocoded"] >= limit:
             break
         try:
-            if geocode_one(rec, api_key, refresh=refresh):
-                changed += 1
-                time.sleep(0.05)
+            outcome = geocode_one(rec, api_key, refresh=refresh)
         except Exception as exc:
             rec.evidence = (rec.evidence or []) + [f"Google geocode failed: {type(exc).__name__}"]
-    return changed
+            stats["failed_geocodes"] += 1
+            continue
+        if outcome == "skipped-existing":
+            stats["kept_existing_coordinates"] += 1
+        elif outcome == "failed":
+            rec.evidence = (rec.evidence or []) + ["Google geocode returned no usable result"]
+            stats["failed_geocodes"] += 1
+        elif outcome.startswith("ok"):
+            stats["geocoded"] += 1
+            stats["geocoded_exact_street" if outcome == "ok-street" else "geocoded_approximate"] += 1
+            time.sleep(0.05)
+    return stats
 
 
-def merge_records(records: list[ClientRecord]) -> list[ClientRecord]:
+def merge_records(records: list[ClientRecord]) -> tuple[list[ClientRecord], int]:
     merged: dict[str, ClientRecord] = {}
     for rec in records:
         rec.clean()
@@ -384,7 +410,9 @@ def merge_records(records: list[ClientRecord]) -> list[ClientRecord]:
         if not old.lat and rec.lat:
             old.lat, old.lng = rec.lat, rec.lng
         old.evidence = (old.evidence or []) + (rec.evidence or [])
-    return sorted([r.clean() for r in merged.values() if r.lat is not None and r.lng is not None], key=lambda r: (r.city, r.name))
+    merged_all = [r.clean() for r in merged.values()]
+    mapped = sorted([r for r in merged_all if r.lat is not None and r.lng is not None], key=lambda r: (r.city, r.name))
+    return mapped, len(merged_all) - len(mapped)
 
 
 def write_outputs(records: list[ClientRecord]) -> None:
@@ -413,15 +441,20 @@ def main() -> int:
     args = parser.parse_args()
     raw_records = parse_csv_files() + parse_xlsx_files() + parse_json_files() + parse_sms_files()
     duplicates = duplicate_report(raw_records)
-    geocoded = geocode_records(raw_records, os.environ.get("GOOGLE_MAPS_API_KEY") if args.geocode else None, args.geocode_limit, args.refresh_geocodes)
-    records = merge_records(raw_records)
+    geo_stats = geocode_records(raw_records, os.environ.get("GOOGLE_MAPS_API_KEY") if args.geocode else None, args.geocode_limit, args.refresh_geocodes)
+    records, dropped_no_coords = merge_records(raw_records)
     write_outputs(records)
     summary = {
         "raw_records": len(raw_records),
         "records": len(records),
-        "merged_duplicates": max(0, len(raw_records) - len(records)),
-        "geocoded": geocoded,
+        "merged_duplicates": max(0, len(raw_records) - len(records) - dropped_no_coords),
+        "records_without_coordinates_dropped": dropped_no_coords,
         "geocoding_enabled": bool(args.geocode and os.environ.get("GOOGLE_MAPS_API_KEY")),
+        "geocoded": geo_stats["geocoded"],
+        "geocoded_exact_street": geo_stats["geocoded_exact_street"],
+        "geocoded_approximate": geo_stats["geocoded_approximate"],
+        "failed_geocodes": geo_stats["failed_geocodes"],
+        "kept_existing_coordinates": geo_stats["kept_existing_coordinates"],
         "duplicate_groups": duplicates["count"],
         "duplicate_records_in_groups": duplicates["records_in_groups"],
         "duplicates": duplicates["groups"][:10],

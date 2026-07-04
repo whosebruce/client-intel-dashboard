@@ -109,7 +109,7 @@ Rules:
 - The key must stay in the local shell/service environment only.
 - Do not paste the key into chat.
 - Do not commit `.env` or generated geocoded customer data.
-- Confirm the final summary includes `geocoding_enabled: true` and `geocoded: <count>`.
+- Confirm the final summary includes `geocoding_enabled: true` and `geocoded: <count>`, and check `geocoded_exact_street` vs `geocoded_approximate`, `failed_geocodes`, and `kept_existing_coordinates` to know whether markers came from exact street addresses or pre-existing coordinates.
 - Use `--refresh-geocodes` if imported rows already contain approximate/city-level coordinates that should be replaced with exact Google coordinates.
 - If the key is missing, ask the human to add one or require the CRM to include `lat` and `lng` columns.
 
@@ -129,6 +129,10 @@ Rules:
 
 Duplicates are matched by phone, normalized address, and name+city. The importer merges records before writing dashboard data.
 
+## Map behavior contract
+
+The dashboard shows **one discrete marker per mapped record** — no heatmap, no clustering. Records sharing an exact coordinate are fanned into a small deterministic ring (~15 m) so each stays clickable at max zoom; the popup says how many records share that location. Do not add heatmap tiles, density blobs, or default clustering.
+
 ## Verification commands
 
 Run before reporting success:
@@ -136,8 +140,11 @@ Run before reporting success:
 ```bash
 python3 scripts/ingest.py --json
 python3 -m py_compile server.py scripts/ingest.py
+python3 -m unittest discover -s tests -v
 python3 server.py
 ```
+
+For full button/map QA, see `tests/browser/README.md` (Playwright, synthetic data only).
 
 In another terminal:
 
