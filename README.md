@@ -1,197 +1,118 @@
 # Client Intel Dashboard
 
-Local-first dashboard for turning CRM spreadsheets, SMS exports, and other customer records into a browsable map + follow-up cockpit for a small/local business.
+A local map and follow-up dashboard built from a small business's own customer records: CRM spreadsheets, CSV or JSON exports, and Android SMS backups.
 
-The current UI is a warm charcoal/sand, responsive map dashboard with:
-
-- territory map (Leaflet vendored in `dashboard/vendor/` — no CDN needed)
-- paid / due / lead status
-- client search and filters
-- selected-record details
-- follow-up queue
-- local upload/import endpoint
-- duplicate detection in the importer
-- CSV/JSON/XLSX browser preview fallback
-- polished import-format docs for AI-agent handoff
+It's for owner-operated service businesses whose customer list is split across a spreadsheet, a CRM export and a phone full of text threads. The importer merges those files into one list, and the dashboard shows each customer as a map marker with paid, due or lead status and a follow-up queue. The importer and server use only the Python standard library and Leaflet is vendored, so there is no build step. The repo ships with no customer data.
 
 ## Quick start
 
-```bash
-python3 scripts/ingest.py --json
-python3 server.py
-```
-
-Open:
-
-```text
-http://127.0.0.1:8766/
-```
-
-On a LAN host/bot machine:
-
-```text
-http://<host-ip>:8766/
-```
-
-## Data import
-
-### Browser
-
-Run `python3 server.py`, open the dashboard, and click **Load data**. Supported file types:
-
-```text
-.csv
-.xlsx
-.json
-.xml
-.zip
-```
-
-The local backend saves files into the appropriate `data/raw/` folder, runs `scripts/ingest.py`, and refreshes `dashboard/clients.json`.
-
-### CLI
-
-Place files in:
-
-```text
-data/raw/csv/            CRM / Google Sheets CSV exports
-data/raw/sheets/         Excel/XLSX CRM exports
-data/raw/sms/            Android SMS Backup & Restore XML exports
-data/raw/json/           JSON arrays or {clients|records|rows:[...]} exports
-```
-
-Then run:
+Requires Python 3.
 
 ```bash
-python3 scripts/ingest.py --json
+python3 scripts/ingest.py --json   # build dashboard/clients.json from data/raw/
+python3 server.py                  # serve the dashboard and the upload endpoint
 ```
 
-## CSV / XLSX / JSON format
+Open `http://127.0.0.1:8766/`, then click **Load data** to import a file. Set `PORT` to use a different port.
 
-See [`docs/IMPORT_FORMAT.md`](docs/IMPORT_FORMAT.md) for a clean import schema, messy-header mapping examples, and agent handoff rules. A no-data header template is available at [`templates/client_import_template.csv`](templates/client_import_template.csv).
+`server.py` listens on all interfaces and has no login. Anyone who can reach the port can view the records and upload files, so run it on a trusted LAN only.
 
-Preferred columns:
+## What the dashboard does
+
+- One clickable marker per mapped record. No heatmap and no clustering.
+- Paid, due and lead counts, search, and a status filter.
+- Record details with **Copy call sheet** and **Directions** (opens Google Maps).
+- A follow-up queue.
+- **Export CSV** writes all loaded records in the import schema.
+- **Fit territory**, collapsible panels, and mobile tabs for Clients, Map, Details and Queue.
+
+Map tiles come from OpenStreetMap, so the map background needs an internet connection. Customer data is served from your machine.
+
+## Importing data
+
+### From the browser
+
+With `server.py` running, **Load data** accepts `.csv`, `.xlsx`, `.json`, `.xml` and `.zip`. The server saves each file under `data/raw/`, runs the importer and refreshes the map.
+
+If the backend isn't reachable, the page falls back to an in-browser preview for CSV and JSON only. Rows without `lat`/`lng` are skipped and nothing is saved.
+
+`.zip` uploads are saved to `data/raw/google_takeout/`, but the importer doesn't read that folder yet.
+
+### From the command line
+
+Drop files here, then run `python3 scripts/ingest.py --json`:
+
+```text
+data/raw/csv/     CRM or Google Sheets CSV exports
+data/raw/sheets/  Excel .xlsx exports (first worksheet)
+data/raw/json/    JSON arrays, or objects with a clients, records or rows list
+data/raw/sms/     Android "SMS Backup & Restore" XML
+```
+
+The importer writes `data/processed/clients.json`, `data/processed/clients.csv` and `dashboard/clients.json`, then prints a summary with record, duplicate, status and geocoding counts.
+
+SMS messages that mention an address, a city, a dollar amount, or payment and lead keywords become review candidates (confidence `low`, or `medium` when a street address is found). SMS rows have no coordinates, so they only reach the map after geocoding.
+
+### Column format
+
+[`docs/IMPORT_FORMAT.md`](docs/IMPORT_FORMAT.md) covers the schema and header mapping. [`templates/client_import_template.csv`](templates/client_import_template.csv) is an empty header template.
 
 ```csv
 name,address,city,lat,lng,status,phone,last_contact,value,follow_up,notes
 ```
 
-Statuses:
+`status` is `paid`, `unpaid` or `lead`; the UI shows `unpaid` as "due". Common aliases such as `Customer Name`, `Service Address`, `Phone Number` and `Balance` are recognized. Rows without coordinates are left off the map and counted as `records_without_coordinates_dropped`.
 
-```text
-paid
-unpaid
-lead
-```
+## Exact-address markers (optional)
 
-The UI displays `unpaid` as `due`.
-
-## Exact-address markers with Google Maps Geocoding
-
-If CRM rows do not already include `lat` and `lng`, the importer can use the Google Maps Geocoding API to convert street addresses into exact marker coordinates.
-
-1. Create a Google Maps Platform API key with the **Geocoding API** enabled.
-2. Do **not** commit the key. Set it locally:
+If rows have street addresses but no coordinates, the importer can geocode them with the Google Maps Geocoding API. This sends each address to Google.
 
 ```bash
-export GOOGLE_MAPS_API_KEY="your-key-here"
-```
-
-3. Run:
-
-```bash
+export GOOGLE_MAPS_API_KEY="your-key"              # never commit it
 python3 scripts/ingest.py --json --geocode
+python3 scripts/ingest.py --json --geocode --refresh-geocodes   # replace existing coordinates
 ```
 
-If the current CRM already has approximate/city-level coordinates and you want Google to replace them with exact street-address coordinates, run:
+The CLI geocodes up to 250 addresses per run (`--geocode-limit`). When `GOOGLE_MAPS_API_KEY` is set, `server.py` also geocodes after each upload, up to `GEOCODE_LIMIT` (default 50), and `GEOCODE_REFRESH=1` adds `--refresh-geocodes`. The server doesn't read `.env` on its own; export these in the shell or service that runs it. [`.env.example`](.env.example) lists them.
 
-```bash
-python3 scripts/ingest.py --json --geocode --refresh-geocodes
-```
+Geocoded records are labeled `exact-geocode` for rooftop or interpolated street matches and `approx-geocode` otherwise. The summary reports `geocoded_exact_street`, `geocoded_approximate`, `failed_geocodes` and `kept_existing_coordinates`.
 
-When `GOOGLE_MAPS_API_KEY` is present, `python3 server.py` also geocodes uploaded files automatically after **Load data**. The importer stores Google’s formatted address, `lat`, `lng`, and an `exact-geocode` confidence label in the generated local files only (`approx-geocode` when Google could only resolve a centroid rather than a rooftop/street address).
+## Map and duplicate behavior
 
-The importer summary reports the geocoding outcome explicitly:
+Records that share an exact coordinate are fanned into a small ring (about 15 m) so each marker stays clickable at max zoom, and the popup says how many share the spot. **Fit territory** frames the filtered markers, capped at zoom 13. Clicking a record zooms to at least 13 and keeps any closer zoom you've set.
 
-```json
-{
-  "geocoding_enabled": true,
-  "geocoded": 12,
-  "geocoded_exact_street": 10,
-  "geocoded_approximate": 2,
-  "failed_geocodes": 1,
-  "kept_existing_coordinates": 30,
-  "records_without_coordinates_dropped": 1
-}
-```
-
-- `geocoded_exact_street` — coordinates came from an exact street-address match (ROOFTOP / RANGE_INTERPOLATED).
-- `kept_existing_coordinates` — rows that already had usable coordinates and were left alone (use `--refresh-geocodes` to replace them).
-- `records_without_coordinates_dropped` — rows that could not be mapped at all and were left out of the dashboard.
-
-## Map behavior: individual markers, never a heatmap
-
-The map intentionally has **no heatmap layer and no marker clustering**. Every mapped record is a discrete, clickable marker, so you can zoom in and inspect individual customers.
-
-When several records share the same exact coordinate (for example, two contacts at one address), the dashboard fans them into a small deterministic ring (~15 m offsets) so each marker stays individually visible and clickable at max zoom, and the marker popup notes how many records share that exact location. Nothing is silently collapsed.
-
-`Fit territory` frames the currently filtered markers (capped at zoom 13 so a single record doesn’t over-zoom); it never overrides a zoom level you set yourself — selecting rows keeps your zoom once you’re zoomed past 13.
-
-## Duplicate detection
-
-The importer reports and merges likely duplicates by:
-
-- normalized phone number
-- normalized address
-- name + city
-
-Example summary:
-
-```json
-{
-  "raw_records": 100,
-  "records": 83,
-  "merged_duplicates": 17,
-  "duplicate_groups": 12
-}
-```
-
-## AI-agent field mapping
-
-This repo is designed for an AI agent to help adapt messy CRM spreadsheets into the dashboard schema. The agent should inspect headers locally, map equivalent fields such as `Customer Name` → `name`, `Service Address` → `address`, `Phone Number` → `phone`, `Balance` → `value`, and export a normalized CSV/XLSX into `data/raw/csv/` or `data/raw/sheets/`.
-
-The private CRM file can stay on the user's machine; the dashboard code itself can live in a public GitHub repo.
+The importer reports likely duplicates by normalized phone number, normalized address, or name plus city (`duplicate_groups` in the summary). It merges records that share a phone number, or an address when there's no phone. A `paid` status wins over `unpaid` and `lead` when records merge.
 
 ## Privacy
 
-Do not commit raw customer exports or generated customer datasets. `.gitignore` excludes:
+Raw exports and generated datasets stay out of git: `.gitignore` excludes `data/raw/**`, `data/processed/**`, `dashboard/clients.json` and `.env`. The code can live in a public repo while the customer files stay on the machine that runs it.
 
-```text
-data/raw/**
-data/processed/**
-dashboard/clients.json
-```
+[`AGENT_README.md`](AGENT_README.md) has copy-paste instructions for an AI agent that runs the import on someone's machine and reports only counts, paths and the dashboard URL.
 
-The repository intentionally ships with no customer/example rows. Add private CRM exports locally after cloning.
-
-## Testing
-
-Deterministic Python tests (the Google geocoder is mocked — no network, no key needed):
+## Tests
 
 ```bash
 python3 -m unittest discover -s tests -v
 ```
 
-Automated browser QA (Playwright, synthetic data only) covering every button, marker behavior, exports, and mobile tabs — see [`tests/browser/README.md`](tests/browser/README.md):
+The Python tests mock the Google geocoder, so they need no key or network.
 
-```bash
-cd tests/browser && npm install && npx playwright install chromium && node qa.js http://127.0.0.1:8766/
+A Playwright suite in [`tests/browser/`](tests/browser/README.md) clicks through every control on desktop and mobile viewports using the synthetic fixture `tests/fixtures/synthetic-clients.csv`. It needs Node and a running server seeded with that fixture; the steps are in its README.
+
+## Layout
+
+```text
+server.py                local web server: dashboard, /api/upload, /api/health
+scripts/ingest.py        importer: CSV, XLSX, JSON and SMS XML to clients.json
+dashboard/index.html     single-file dashboard (Leaflet 1.9.4 in dashboard/vendor/)
+docs/                    import format guide and a QA handoff prompt
+templates/               empty CSV header template
+tests/                   unittest suite, synthetic fixture, Playwright browser QA
+AGENT_README.md          handoff instructions for an AI agent
 ```
 
-A sanitized fixture for seeding QA data lives at `tests/fixtures/synthetic-clients.csv` (fake names/addresses only).
+## Status
 
-## AI-agent handoff
+Working and tested against synthetic data. Last feature work was July 2026. There's no login yet and no license file.
 
-See [`AGENT_README.md`](AGENT_README.md) for copy/paste-safe instructions for another Hermes/AI agent to clone the repo, export a Google Sheet/CRM CSV locally, import it, and report only counts/paths/dashboard URL.
-
-For a high-effort Claude Code/Fable-style QA and geocoding pass, use [`docs/CLAUDE_CODE_FABLE5_HIGH_EFFORT_HANDOFF.md`](docs/CLAUDE_CODE_FABLE5_HIGH_EFFORT_HANDOFF.md).
+Maintained by Jonathan Bruce ([@whosebruce](https://github.com/whosebruce)).
