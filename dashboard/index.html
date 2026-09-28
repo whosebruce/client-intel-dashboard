@@ -1,73 +1,146 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="night">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Client Intel Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Client Intel</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23FEB019'/%3E%3Ctext x='16' y='23' font-family='Impact,Arial Narrow,sans-serif' font-size='19' font-weight='800' text-anchor='middle' fill='%2315181C'%3ECI%3C/text%3E%3C/svg%3E" />
+  <script>
+    try { const t = localStorage.getItem('cid.theme'); if (t === 'day' || t === 'night') document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+  <link rel="stylesheet" href="css/fonts.css" />
+  <link rel="stylesheet" href="css/app.css" />
   <script src="vendor/leaflet/leaflet.js"></script>
-  <style>
-    :root{
-      color-scheme:dark;
-      --ink:#0d0f0f;--bg2:#121514;--panel:rgba(25,28,27,.94);--panel-strong:rgba(23,26,24,.97);
-      --line:#343a36;--line2:rgba(194,170,122,.38);--text:#ece8df;--muted:#a39b8d;--dim:#716c62;
-      --sand:#c2aa7a;--sand-bright:#f0e3c7;--olive:#7f875d;--paid:#718b68;--unpaid:#b17f45;--lead:#798797;--danger:#9a5a4f;
-      --shadow:0 22px 70px rgba(0,0,0,.46);--r:22px;--blur:blur(14px)
-    }
-    *{box-sizing:border-box} html,body{height:100%;margin:0;background:radial-gradient(circle at 18% 12%,rgba(194,170,122,.06),transparent 30%),var(--ink);color:var(--text);font-family:Inter,IBM Plex Sans,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden} button,input,select{font:inherit} button{touch-action:manipulation}.map-shell{grid-column:3;grid-row:2;position:relative;min-height:0;border-radius:24px;overflow:hidden;pointer-events:auto;background:#111;border:1px solid var(--line);box-shadow:var(--shadow)}#map{position:absolute;inset:0;background:#111}.leaflet-container{background:#111}.leaflet-tile{filter:grayscale(1) invert(.93) contrast(1.02) brightness(.72) sepia(.1)}.leaflet-control-zoom{border:1px solid var(--line)!important;box-shadow:var(--shadow)!important}.leaflet-control-zoom a{background:rgba(25,28,27,.94)!important;color:var(--text)!important;border-color:var(--line)!important}.leaflet-control-attribution{display:none}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#171a18;color:var(--text);border:1px solid var(--line);box-shadow:var(--shadow)}
-    .app{position:relative;z-index:10;height:100%;display:grid;grid-template-columns:72px minmax(330px,420px) 1fr minmax(330px,410px);grid-template-rows:76px 1fr 126px;gap:14px;padding:14px;pointer-events:none}.surface,.rail,.topbar,.queue,.toast{pointer-events:auto;background:linear-gradient(180deg,rgba(25,28,27,.96),rgba(17,19,18,.94));border:1px solid rgba(194,170,122,.16);box-shadow:var(--shadow);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur)}.rail{grid-row:1/4;border-radius:24px;display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px 10px}.brand{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:#0f1110;border:1px solid #3b403a;color:var(--sand);font-weight:900;letter-spacing:-.05em}.rail button{width:48px;height:48px;border:1px solid transparent;border-radius:16px;background:transparent;color:var(--muted);cursor:pointer}.rail button:hover,.rail button.active{border-color:#484f47;background:#202421;color:var(--text)}.rail .spacer{flex:1}.mini-label{writing-mode:vertical-rl;color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.18em}.topbar{grid-column:2/5;border-radius:24px;display:flex;align-items:center;justify-content:space-between;padding:0 18px}.title{display:flex;gap:14px;align-items:center}.pulse{width:10px;height:10px;border-radius:50%;background:var(--sand);box-shadow:0 0 0 6px rgba(194,170,122,.12)}h1{margin:0;font-size:19px;letter-spacing:-.045em}.title p{margin:3px 0 0;color:var(--muted);font-size:12px}.top-actions{display:flex;gap:10px;align-items:center}.pill{border:1px solid rgba(194,170,122,.22);background:#171a18;color:var(--sand);border-radius:999px;padding:10px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em}.btn{border:1px solid #3a403a;background:#171a18;color:var(--text);border-radius:14px;padding:10px 13px;cursor:pointer;font-weight:700}.btn:hover{border-color:#5b604f;background:#1d211f}.btn.primary{border-color:#6d654a;background:#2a271f;color:#f4e6c4}.btn.primary:hover{border-color:#8a7f5c;background:#332e22}.btn:disabled{opacity:.55;cursor:not-allowed}.left{grid-column:2;grid-row:2/4;min-height:0;border-radius:24px;display:flex;flex-direction:column;overflow:hidden}.summary{padding:17px;border-bottom:1px solid rgba(194,170,122,.12)}.eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:var(--sand);font-weight:800}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:13px}.kpi{background:#111312;border:1px solid #2f3530;border-radius:16px;padding:11px}.kpi b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:25px;letter-spacing:-.07em;display:block}.kpi span{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.import-card{margin-top:12px;border:1px solid #3b392e;background:#211f19;border-radius:16px;padding:12px}.import-card b{font-size:14px}.import-card span{display:block;margin-top:3px;color:var(--muted);font-size:12px}.filters{padding:12px 16px;display:grid;gap:9px;border-bottom:1px solid rgba(194,170,122,.1)}input,select{width:100%;border:1px solid #343a36;background:#101211;color:var(--text);border-radius:14px;padding:12px;outline:none}input::placeholder{color:#8f8779}input:focus,select:focus{border-color:#6d654a;box-shadow:0 0 0 3px rgba(194,170,122,.12)}.client-list{min-height:0;overflow:auto;padding:12px;display:grid;gap:9px}.client{border:1px solid #2f3530;background:rgba(20,23,21,.9);border-radius:17px;padding:12px;cursor:pointer;transition:.16s ease}.client:hover{transform:translateY(-1px);border-color:#535a50;background:#1d211f}.client.active{border-color:#7a7152;background:#24231d}.client-top{display:flex;justify-content:space-between;gap:12px}.client h3{font-size:14px;margin:0;letter-spacing:-.025em}.amount{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--sand-bright);font-weight:850}.client-meta{margin-top:8px;color:var(--muted);font-size:12px;line-height:1.38}.badge{display:inline-flex;align-items:center;gap:6px;margin-top:10px;border:1px solid #343a36;border-radius:999px;padding:5px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}.badge:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--status,var(--lead))}.badge.paid{--status:var(--paid)}.badge.unpaid{--status:var(--unpaid)}.badge.lead{--status:var(--lead)}.map-tools{grid-column:3;grid-row:2;align-self:start;justify-self:start;display:flex;gap:10px;flex-wrap:wrap;pointer-events:auto}.chip{border:1px solid rgba(194,170,122,.16);background:rgba(17,19,18,.82);backdrop-filter:var(--blur);border-radius:999px;padding:10px 13px;color:var(--muted);font-size:12px;box-shadow:var(--shadow)}.legend{display:flex;gap:12px}.legend span{display:inline-flex;align-items:center;gap:6px}.legend i{width:9px;height:9px;border-radius:50%}.detail{grid-column:4;grid-row:2;min-height:0;border-radius:24px;display:flex;flex-direction:column;overflow:hidden}.detail-head{padding:19px;border-bottom:1px solid rgba(194,170,122,.12)}.detail h2{font-size:28px;margin:8px 0 8px;line-height:.96;letter-spacing:-.065em}.address{color:var(--muted);font-size:13px;line-height:1.4}.detail-body{padding:14px 16px;display:grid;gap:10px;overflow:auto}.field{border:1px solid #303631;background:#111312;border-radius:16px;padding:12px}.field label{display:block;color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.13em;margin-bottom:6px}.field div{font-size:14px;white-space:pre-wrap}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.queue{grid-column:3/5;grid-row:3;border-radius:24px;padding:14px 16px;overflow:hidden;display:flex;flex-direction:column;justify-content:center}.queue-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.queue h3{margin:0;color:var(--sand);font-size:12px;text-transform:uppercase;letter-spacing:.16em}.slots{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(218px,1fr);gap:9px;overflow:auto}.slot{border:1px solid #303631;background:#111312;border-radius:16px;padding:11px;min-height:72px}.slot time{display:block;color:var(--sand);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700}.slot b{display:block;margin-top:4px}.slot span{display:block;color:var(--muted);font-size:12px;margin-top:3px}.marker-label{min-width:38px;padding:6px 9px;border-radius:999px;color:#111;font-weight:850;font-size:11px;text-align:center;border:1px solid #423b2b;box-shadow:0 10px 24px rgba(0,0,0,.4);transition:.15s}.empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed #343a36;border-radius:17px;background:rgba(255,255,255,.03)}.empty b{display:block;color:var(--text);font-size:17px;margin-bottom:5px}.toast{position:fixed;right:18px;bottom:18px;z-index:80;border-radius:18px;padding:13px 15px;max-width:380px;display:none;color:var(--text)}.toast.show{display:block}.panel-title{display:flex;align-items:center;justify-content:space-between;gap:10px}.panel-close{border:1px solid #3a403a;background:#151817;color:var(--muted);border-radius:999px;padding:6px 9px;cursor:pointer;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.panel-close:hover{border-color:#6d654a;color:var(--text);background:#24231d}.app.hide-left .left,.app.hide-detail .detail,.app.hide-queue .queue,.app.focus-map .left,.app.focus-map .detail,.app.focus-map .queue{display:none}.app.hide-left .map-shell{grid-column:2/4}.app.hide-detail .map-shell{grid-column:3/5}.app.hide-queue .map-shell{grid-row:2/4}.app.hide-queue .detail{grid-row:2/4}.app.focus-map .map-shell{grid-column:2/5;grid-row:2/4}.app.focus-map .map-tools{display:flex}.app.focus-map #panelToggle{border-color:#6d654a;background:#24231d;color:#f4e6c4}.mobile-tabs{display:none}
-    @media(max-width:1180px){.app{grid-template-columns:64px minmax(320px,380px) 1fr;grid-template-rows:70px 1fr 132px}.topbar{grid-column:2/4}.detail{display:none}.queue{grid-column:2/4}.map-shell{grid-column:3;grid-row:2}.map-tools{display:none}.top-actions .pill,.top-actions #exportBtn{display:none}.title p{max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
-    @media(max-width:820px){html,body{overflow:hidden}.app{grid-template-columns:1fr;grid-template-rows:64px 1fr 44vh;padding:8px;gap:8px}.rail{display:none}.topbar{grid-column:1;grid-row:1;border-radius:18px;padding:0 12px}.map-shell{grid-column:1;grid-row:2;border-radius:18px}.title p,.top-actions .btn:not(.primary),.top-actions .pill{display:none}h1{font-size:16px}.left,.detail,.queue{grid-column:1;grid-row:3;border-radius:20px;display:none}.left.mobile-active,.detail.mobile-active,.queue.mobile-active{display:flex}.queue .slots{grid-auto-flow:row;grid-auto-rows:auto}.mobile-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;position:fixed;left:8px;right:8px;bottom:calc(44vh + 16px);z-index:50;pointer-events:auto}.mobile-tabs button{border:1px solid #343a36;background:#151817;color:var(--muted);border-radius:14px;padding:10px 6px}.mobile-tabs button.active{border-color:#6d654a;color:var(--text);background:#24231d}.kpis{grid-template-columns:repeat(3,1fr)}}
-  </style>
+  <script type="module" src="js/main.js"></script>
 </head>
 <body>
-  <main class="app">
-    <nav class="rail" aria-label="Dashboard modes"><div class="brand">CID</div><button class="active" title="Fit map" id="railMap">⌖</button><button title="Clients" id="railClients">☰</button><button title="Follow-ups" id="railQueue">◷</button><div class="spacer"></div><div class="mini-label" id="territoryLabel">Territory</div></nav>
-    <header class="topbar"><div class="title"><i class="pulse"></i><div><h1 id="appTitle">Client Intel Dashboard</h1><p>Import clean CRM files, see the territory, work the follow-up queue.</p></div></div><div class="top-actions"><span class="pill" id="territoryPill">Territory</span><button class="btn" id="fitBtn">Fit territory</button><button class="btn" id="panelToggle">Hide panels</button><button class="btn" id="exportBtn">Export CSV</button><button class="btn primary" id="loadBtn">Load data</button><input id="fileInput" type="file" accept=".csv,.json,.xlsx,.xml,.zip" multiple hidden></div></header>
-    <section class="surface left mobile-active" id="clientsPanel"><div class="summary"><div class="panel-title"><div class="eyebrow">Territory summary</div><button class="panel-close" data-panel="left">Hide</button></div><div class="kpis"><div class="kpi"><b id="totalClients">0</b><span>Clients</span></div><div class="kpi"><b id="paidCount">0</b><span>Paid</span></div><div class="kpi"><b id="unpaidCount">0</b><span>Due</span></div></div><div class="import-card"><b id="hotZone">No records yet</b><span id="importHint">Click Load data to import CSV/JSON locally, or run the backend importer.</span></div></div><div class="filters"><input id="search" placeholder="Search name, phone, city, address, notes…" autocomplete="off"><select id="statusFilter"><option value="all">All records</option><option value="paid">Paid</option><option value="unpaid">Due / unpaid</option><option value="lead">Leads</option></select></div><div class="client-list" id="clientList"></div></section>
-    <section class="map-shell" aria-label="Territory map"><div id="map"></div></section>
-    <div class="map-tools"><div class="chip legend"><span><i style="background:var(--paid)"></i>paid</span><span><i style="background:var(--unpaid)"></i>due</span><span><i style="background:var(--lead)"></i>lead</span></div><div class="chip" id="mapSummary">Ready for data</div></div>
-    <section class="surface detail" id="detailPanel"><div class="detail-head"><div class="panel-title"><div class="eyebrow">Selected record</div><button class="panel-close" data-panel="detail">Hide</button></div><h2 id="detailName">Pick a client</h2><div class="address" id="detailAddress">Select a marker or row to inspect details.</div></div><div class="detail-body"><div class="field"><label>Status</label><div id="detailStatus">—</div></div><div class="field"><label>Phone</label><div id="detailPhone">—</div></div><div class="field"><label>Last contact</label><div id="detailContact">—</div></div><div class="field"><label>Value</label><div id="detailValue">—</div></div><div class="field"><label>Notes / evidence</label><div id="detailNotes">—</div></div><div class="actions"><button class="btn primary" id="copyCallSheet">Copy call sheet</button><button class="btn" id="directionsBtn">Directions</button></div></div></section>
-    <section class="queue"><div class="queue-head"><h3>Follow-up queue</h3><span class="eyebrow" id="datasetNote">no private data loaded</span><button class="panel-close" data-panel="queue">Hide</button></div><div class="slots" id="calendarList"></div></section>
-    <div class="mobile-tabs"><button class="active" data-tab="clients">Clients</button><button data-tab="map">Map</button><button data-tab="detail">Details</button><button data-tab="queue">Queue</button></div>
-  </main>
-  <div class="toast" id="toast"></div>
-  <script>
-    const state={clients:[],markers:[],selected:null,serverMode:false};
-    const $=id=>document.getElementById(id);
-    const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-    const money=s=>s?String(s):'—'; const norm=s=>String(s??'').trim();
-    const statusLabel=s=>s==='unpaid'?'due':(s||'lead');
-    const statusColor=s=>s==='paid'?'#718b68':s==='unpaid'?'#b17f45':'#798797';
-    const toast=(msg)=>{const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(window.__toast);window.__toast=setTimeout(()=>el.classList.remove('show'),4200)};
-    const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([39.5,-98.35],4);L.control.zoom({position:'bottomright'}).addTo(map);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,crossOrigin:true}).addTo(map);
-    const pick=(...vs)=>vs.find(v=>String(v??'').trim()!=='');
-    const toNum=v=>{const s=String(v??'').trim();return s===''?NaN:Number(s)};
-    function normalizedRecord(r,i=0){const lat=toNum(pick(r.lat,r.latitude)),lng=toNum(pick(r.lng,r.lon,r.longitude));return {id:norm(r.id)||`row-${i}`,name:norm(r.name||r.client||r.client_name||r.customer||r.customer_name||r.contact)||'Unknown client',address:norm(r.address||r.street||r.location||r.service_address),city:norm(r.city||r.town||r.county),lat,lng,status:(norm(r.status)||'lead').toLowerCase().replace('due','unpaid'),phone:norm(r.phone||r.phone_number||r.number||r.mobile||r.telephone),last_contact:norm(r.last_contact||r.date||r.lastContact),value:norm(r.value||r.amount||r.payment||r.balance),follow_up:norm(r.follow_up||r.followup||r.next_contact||r.next_call),notes:norm(r.notes||r.note||r.description||r.summary),confidence:norm(r.confidence),evidence:Array.isArray(r.evidence)?r.evidence:[norm(r.evidence)].filter(Boolean)} }
-    function cleanRows(rows){return rows.map(normalizedRecord).filter(r=>Number.isFinite(r.lat)&&Number.isFinite(r.lng)).map(r=>({...r,status:['paid','unpaid','lead'].includes(r.status)?r.status:'lead'}));}
-    function filtered(){const q=$('search').value.toLowerCase().trim(),f=$('statusFilter').value;return state.clients.filter(c=>(f==='all'||c.status===f)&&(!q||[c.name,c.address,c.city,c.notes,c.phone,c.value].join(' ').toLowerCase().includes(q)))}
-    function territoryLabel(){const rows=filtered();if(rows.length){const counts=rows.reduce((a,r)=>{const k=r.city||'Mapped Territory';a[k]=(a[k]||0)+1;return a},{});return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0]}const c=map.getCenter();return map.getZoom()<6?'Mapped Territory':`${c.lat.toFixed(2)}, ${c.lng.toFixed(2)}`}
-    function setTerritory(){const label=territoryLabel();$('territoryLabel').textContent=label;$('territoryPill').textContent=label}
-    function iconFor(c,active=false){const initials=(c.name||'?').split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();return L.divIcon({html:`<div class="marker-label" style="background:${statusColor(c.status)};transform:scale(${active?1.14:1})">${esc(initials)}</div>`,className:'',iconSize:[44,28],iconAnchor:[22,14],popupAnchor:[0,-16]})}
-    function updateStats(){const rows=state.clients,focus=territoryLabel();$('totalClients').textContent=rows.length;$('paidCount').textContent=rows.filter(c=>c.status==='paid').length;$('unpaidCount').textContent=rows.filter(c=>c.status==='unpaid').length;$('hotZone').textContent=rows.length?focus:'No records yet';$('mapSummary').textContent=rows.length?`${rows.length} records · focus ${focus}`:'No private data loaded';$('importHint').textContent=rows.length?'Use filters, markers, copy call sheet, or export a clean CSV.':'Click Load data for browser preview, or run python3 server.py for persisted imports.';$('exportBtn').disabled=!rows.length;setTerritory()}
-    function renderCalendar(rows){const upcoming=[...rows].filter(c=>c.follow_up).sort((a,b)=>String(a.follow_up).localeCompare(String(b.follow_up))).slice(0,12);$('calendarList').innerHTML=upcoming.map(c=>`<div class="slot"><time>${esc(c.follow_up)}</time><b>${esc(c.name)}</b><span>${esc(statusLabel(c.status))} · ${esc(c.city||c.address||'no location')}</span></div>`).join('')||'<div class="slot"><span>No follow-ups scheduled yet.</span></div>'}
-    // Same-coordinate records get small deterministic ring offsets (~15m) so every
-    // customer stays individually visible and clickable at max zoom. Never clusters,
-    // never heatmaps: one discrete marker per record, always.
-    function spreadOverlaps(rows){const groups=new Map();rows.forEach(c=>{const k=c.lat.toFixed(6)+','+c.lng.toFixed(6);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(c)});groups.forEach(g=>{if(g.length<2){g[0]._dlat=g[0].lat;g[0]._dlng=g[0].lng;g[0]._twins=1;return}const lngScale=1/Math.max(Math.cos(g[0].lat*Math.PI/180),.2);g.forEach((c,i)=>{const ring=Math.floor(i/8),slot=i%8,perRing=Math.min(g.length-ring*8,8),ang=2*Math.PI*slot/perRing,r=0.00014*(ring+1);c._dlat=c.lat+r*Math.sin(ang);c._dlng=c.lng+r*Math.cos(ang)*lngScale;c._twins=g.length})})}
-    function render(){const rows=filtered();spreadOverlaps(rows);state.markers.forEach(m=>map.removeLayer(m));state.markers=[];rows.forEach(c=>{const m=L.marker([c._dlat??c.lat,c._dlng??c.lng],{icon:iconFor(c,state.selected&&state.selected.id===c.id)}).addTo(map);m.bindPopup(`<b>${esc(c.name)}</b><br>${esc(c.address||c.city||'No address')}<br>${esc(statusLabel(c.status))} · ${esc(money(c.value))}${c._twins>1?`<br><em>${c._twins} records share this exact location — markers are fanned slightly so each stays clickable.</em>`:''}`);m.on('click',()=>selectClient(c,true));state.markers.push(m)});$('clientList').innerHTML=rows.map(c=>`<article class="client ${state.selected&&state.selected.id===c.id?'active':''}" data-id="${esc(c.id)}"><div class="client-top"><h3>${esc(c.name)}</h3><div class="amount">${esc(money(c.value))}</div></div><div class="client-meta">${esc(c.address||c.city||'No address')}<br>${esc(c.phone||'No phone')} · ${esc(c.follow_up||'no follow-up')}</div><div class="badge ${esc(c.status)}">${esc(statusLabel(c.status))}</div></article>`).join('')||'<div class="empty"><b>No matching records</b><span>Try clearing the search/filter or import a CSV/JSON with lat/lng.</span></div>';$('clientList').querySelectorAll('.client').forEach((el,i)=>el.onclick=()=>selectClient(rows[i],true));updateStats();renderCalendar(rows);setTimeout(()=>map.invalidateSize(),60)}
-    function selectClient(c,pan=false){state.selected=c;if(!c)return;if(!matchMedia('(max-width:820px)').matches)setPanelHidden('detail',false);$('detailName').textContent=c.name;$('detailAddress').textContent=c.address||c.city||'No address';$('detailStatus').innerHTML=`<span class="badge ${esc(c.status)}">${esc(statusLabel(c.status))}</span>`;$('detailPhone').textContent=c.phone||'—';$('detailContact').textContent=c.last_contact||'—';$('detailValue').textContent=c.value||'—';$('detailNotes').textContent=[c.notes,...(c.evidence||[]).slice(0,3)].filter(Boolean).join('\n')||'—';if(pan&&Number.isFinite(c.lat)&&Number.isFinite(c.lng))map.flyTo([c._dlat??c.lat,c._dlng??c.lng],Math.max(map.getZoom(),13),{duration:.55});render();showMobile('detail')}
-    function fitMap(){const rows=filtered();if(!rows.length){map.setView([39.5,-98.35],4);return}map.fitBounds(L.latLngBounds(rows.map(c=>[c.lat,c.lng])),{padding:[72,72],maxZoom:13})}
-    function parseCsv(text){const rows=[];let row=[],cell='',q=false;for(let i=0;i<text.length;i++){const ch=text[i],n=text[i+1];if(ch==='"'&&q&&n==='"'){cell+='"';i++;continue}if(ch==='"'){q=!q;continue}if(ch===','&&!q){row.push(cell);cell='';continue}if((ch==='\n'||ch==='\r')&&!q){if(ch==='\r'&&n==='\n')i++;row.push(cell);if(row.some(x=>String(x).trim()))rows.push(row);row=[];cell='';continue}cell+=ch}row.push(cell);if(row.some(x=>String(x).trim()))rows.push(row);const headers=(rows.shift()||[]).map(h=>h.trim().toLowerCase().replace(/\s+/g,'_'));return rows.map(r=>Object.fromEntries(headers.map((h,i)=>[h,(r[i]||'').trim()]))) }
-    async function loadInitial(){try{const res=await fetch('clients.json',{cache:'no-store'});if(res.ok){const rows=await res.json();state.clients=cleanRows(rows);state.serverMode=true;$('datasetNote').textContent=`clients.json · ${state.clients.length} records`}}catch(e){$('datasetNote').textContent='browser preview ready'}state.selected=state.clients[0]||null;render();if(state.selected)selectClient(state.selected,false);fitMap()}
-    async function handleFiles(files){if(!files.length)return;$('datasetNote').textContent='importing…';const fd=new FormData();files.forEach(f=>fd.append('files',f,f.name));try{const res=await fetch('/api/upload',{method:'POST',body:fd});if(res.ok){const out=await res.json();$('datasetNote').textContent=`${out.summary.records||0} records · ${out.summary.merged_duplicates||0} merged`;await loadInitial();toast(`Imported ${out.saved.length} file(s). Records: ${out.summary.records||0}. Duplicate groups: ${out.summary.duplicate_groups||0}.`);return}toast('Server import failed — falling back to browser-only preview.')}catch(err){}
-      const f=files[0],ext=f.name.toLowerCase().split('.').pop();if(!['csv','json'].includes(ext)){toast(`Backend not reachable and .${ext} files need it: run python3 server.py, then click Load data again. Browser-only preview supports CSV/JSON.`);$('datasetNote').textContent='backend offline · import skipped';return}
-      const text=await f.text();let rows=[];try{rows=ext==='json'?JSON.parse(text):parseCsv(text)}catch(e){toast('Could not read that file. Use CSV/JSON in the documented schema.');$('datasetNote').textContent='import failed';return}if(!Array.isArray(rows))rows=rows.clients||rows.records||rows.rows||[];state.clients=cleanRows(rows);state.selected=state.clients[0]||null;$('datasetNote').textContent=`browser-only preview · ${state.clients.length} records`;render();if(state.selected)selectClient(state.selected,false);fitMap();const skipped=rows.length-state.clients.length;toast(`Loaded ${state.clients.length} of ${rows.length} rows in browser-only preview.${skipped>0?` ${skipped} row(s) skipped without usable lat/lng — run the backend with GOOGLE_MAPS_API_KEY to geocode street addresses.`:''} Run python3 server.py to persist imports.`)}
-    function showMobile(tab){if(!matchMedia('(max-width:820px)').matches)return;document.querySelector('.app').classList.remove('focus-map');document.querySelectorAll('.mobile-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));$('clientsPanel').classList.toggle('mobile-active',tab==='clients');$('detailPanel').classList.toggle('mobile-active',tab==='detail');document.querySelector('.queue').classList.toggle('mobile-active',tab==='queue');if(tab==='map'){$('clientsPanel').classList.remove('mobile-active');$('detailPanel').classList.remove('mobile-active');document.querySelector('.queue').classList.remove('mobile-active')}setTimeout(()=>map.invalidateSize(),120)}
-    async function copyCallSheet(){const c=state.selected;if(!c){toast('Pick a client first.');return}const text=`${c.name}\n${c.phone||''}\n${c.address||c.city||''}\nStatus: ${statusLabel(c.status)}\nValue: ${c.value||''}\nFollow-up: ${c.follow_up||''}\nNotes: ${c.notes||''}`;try{await navigator.clipboard.writeText(text);toast('Call sheet copied.')}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Call sheet copied.')}}
-    function directions(){const c=state.selected;if(!c){toast('Pick a client first.');return}const q=encodeURIComponent(c.address||`${c.lat},${c.lng}`);window.open(`https://www.google.com/maps/dir/?api=1&destination=${q}`,'_blank','noopener')}
-    function setPanelHidden(panel,hidden=true){document.querySelector('.app').classList.toggle(`hide-${panel}`,hidden);setTimeout(()=>map.invalidateSize(),140)}function toggleFocusMap(){const app=document.querySelector('.app');const on=!app.classList.contains('focus-map');app.classList.toggle('focus-map',on);if(!on){['left','detail','queue'].forEach(p=>setPanelHidden(p,false))}$('panelToggle').textContent=on?'Show panels':'Hide panels';setTimeout(()=>map.invalidateSize(),160);if(on)fitMap()}function exportCsv(){const fields=['name','address','city','lat','lng','status','phone','last_contact','value','follow_up','notes'];const lines=[fields.join(',')].concat(state.clients.map(r=>fields.map(f=>`"${String(r[f]??'').replace(/"/g,'""')}"`).join(',')));const blob=new Blob([lines.join('\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='client-intel-export.csv';a.click();URL.revokeObjectURL(a.href)}
-    document.querySelectorAll('.panel-close').forEach(b=>b.onclick=()=>{if(matchMedia('(max-width:820px)').matches){showMobile('map')}else{setPanelHidden(b.dataset.panel,true)}});$('panelToggle').onclick=toggleFocusMap;$('search').oninput=render;$('statusFilter').onchange=render;$('fitBtn').onclick=fitMap;$('railMap').onclick=()=>{fitMap();showMobile('map')};$('railClients').onclick=()=>{setPanelHidden('left',false);showMobile('clients')};$('railQueue').onclick=()=>{setPanelHidden('queue',false);showMobile('queue')};$('loadBtn').onclick=()=>$('fileInput').click();$('fileInput').onchange=e=>handleFiles([...e.target.files]);$('copyCallSheet').onclick=copyCallSheet;$('directionsBtn').onclick=directions;$('exportBtn').onclick=exportCsv;document.querySelectorAll('.mobile-tabs button').forEach(b=>b.onclick=()=>showMobile(b.dataset.tab));map.on('moveend zoomend',setTerritory);window.addEventListener('resize',()=>setTimeout(()=>map.invalidateSize(),120));loadInitial();
-  </script>
+  <div class="app" id="app" data-tab="roster">
+    <header class="bar">
+      <div class="brand">
+        <div class="tile" aria-hidden="true">CI</div>
+        <div>
+          <h1>Client Intel</h1>
+          <p class="mono" id="territory">Territory // standing by</p>
+        </div>
+      </div>
+      <div class="status" id="dataStatus" role="status" data-tone="idle"><i></i><span class="status-text">Loading</span></div>
+      <nav class="bar-actions" aria-label="Dashboard actions">
+        <div class="seg" role="group" aria-label="Show panels">
+          <button class="btn" data-panel="roster" aria-pressed="true">Roster</button>
+          <button class="btn" data-panel="record" aria-pressed="true">Record</button>
+          <button class="btn" data-panel="queue" aria-pressed="true">Queue</button>
+        </div>
+        <button class="btn" id="focusBtn" aria-pressed="false" title="Hide every panel and give the map the whole screen (M)">Focus map</button>
+        <button class="btn" id="exportBtn" title="Download every loaded record as CSV">Export<span>&nbsp;CSV</span></button>
+        <button class="btn" id="themeBtn" title="Switch day / night (T)">Day</button>
+        <button class="btn btn--sq" id="helpBtn" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">?</button>
+        <button class="btn btn--signal" id="importBtn" title="Import CSV, XLSX, JSON, SMS XML (I)">Import</button>
+      </nav>
+      <button class="btn menu-btn" id="menuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="menu">Menu</button>
+      <div class="hazard" aria-hidden="true"></div>
+    </header>
+
+    <section class="panel roster" id="roster" aria-labelledby="rosterTitle">
+      <div class="sec"><span class="sec-n">01</span><h2 id="rosterTitle">Roster</h2><span class="sec-rule"></span><button class="link-btn" data-hide="roster">Hide</button></div>
+      <div class="tiles" id="tiles" role="group" aria-label="Filter by status"></div>
+      <div class="ratio" id="ratio" aria-hidden="true"></div>
+      <div class="controls">
+        <label class="search">
+          <span class="sr-only">Search records</span>
+          <input id="search" type="search" placeholder="Search name, phone, address, notes" autocomplete="off" spellcheck="false" />
+          <kbd>/</kbd>
+        </label>
+        <div class="control-row">
+          <label class="select"><span>Sort</span><select id="sort" aria-label="Sort records"></select></label>
+          <button class="toggle" id="inViewBtn" aria-pressed="false" title="Only list records inside the current map view">Map area</button>
+        </div>
+      </div>
+      <div id="notices"></div>
+      <div class="list-head mono" id="listHead"></div>
+      <ol class="list" id="list" aria-label="Client records"></ol>
+    </section>
+
+    <div class="main">
+      <section class="map-area" aria-label="Territory map">
+        <div id="map"></div>
+        <div class="map-hud">
+          <div class="hud hud--legend" aria-label="Map legend">
+            <span class="key key--paid"><i></i>Paid</span>
+            <span class="key key--unpaid"><i></i>Due</span>
+            <span class="key key--lead"><i></i>Lead</span>
+            <span class="key key--overdue"><i></i>Overdue</span>
+          </div>
+          <div class="hud hud-count" id="mapCount">0 on map</div>
+          <span class="hud-spacer"></span>
+          <button class="btn" id="fitBtn" title="Frame every filtered marker (F)">Fit territory</button>
+        </div>
+      </section>
+
+      <section class="panel record" id="record" aria-labelledby="recordTitle">
+        <div class="sec">
+          <span class="sec-n">02</span><h2 id="recordTitle">Record</h2><span class="sec-rule"></span>
+          <button class="link-btn" id="prevBtn" title="Previous record (K)">‹ Prev</button>
+          <button class="link-btn" id="nextBtn" title="Next record (J)">Next ›</button>
+          <button class="link-btn" data-hide="record">Hide</button>
+        </div>
+        <div class="record-body" id="recordBody"></div>
+      </section>
+
+      <section class="panel queue" id="queue" aria-labelledby="queueTitle">
+        <div class="sec"><span class="sec-n">03</span><h2 id="queueTitle">Follow-up queue</h2><span class="sec-rule"></span><span class="sec-meta" id="queueMeta"></span><button class="link-btn" data-hide="queue">Hide</button></div>
+        <div class="queue-cols" id="queueCols"></div>
+      </section>
+    </div>
+
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Views">
+      <button role="tab" data-tab="roster" aria-selected="true">Roster</button>
+      <button role="tab" data-tab="map" aria-selected="false">Map</button>
+      <button role="tab" data-tab="record" aria-selected="false">Record</button>
+      <button role="tab" data-tab="queue" aria-selected="false">Queue<span class="badge" id="queueBadge"></span></button>
+    </nav>
+  </div>
+
+  <div class="menu" id="menu" role="menu" hidden>
+    <button role="menuitem" data-action="export">Export CSV</button>
+    <button role="menuitem" data-action="fit">Fit territory</button>
+    <button role="menuitem" data-action="theme" id="menuTheme">Day mode</button>
+    <button role="menuitem" data-action="demo">Load demo data</button>
+  </div>
+
+  <dialog id="importDialog" aria-labelledby="importTitle">
+    <div class="dlg-head">
+      <div><div class="mono">Data intake</div><h2 id="importTitle">Import</h2></div>
+      <button class="btn btn--sm" data-close>Close</button>
+    </div>
+    <div class="dlg-body" id="importBody"></div>
+    <div class="dlg-foot" aria-hidden="true"></div>
+  </dialog>
+
+  <dialog id="helpDialog" aria-labelledby="helpTitle">
+    <div class="dlg-head">
+      <div><div class="mono">Field reference</div><h2 id="helpTitle">Shortcuts</h2></div>
+      <button class="btn btn--sm" data-close>Close</button>
+    </div>
+    <div class="dlg-body">
+      <dl class="keys">
+        <dt><kbd>/</kbd></dt><dd>Search records</dd>
+        <dt><kbd>J</kbd><kbd>K</kbd></dt><dd>Next / previous record in the roster</dd>
+        <dt><kbd>F</kbd></dt><dd>Fit territory to the filtered markers</dd>
+        <dt><kbd>M</kbd></dt><dd>Focus map (hide every panel)</dd>
+        <dt><kbd>C</kbd></dt><dd>Copy call sheet for the selected record</dd>
+        <dt><kbd>D</kbd></dt><dd>Directions to the selected record</dd>
+        <dt><kbd>I</kbd></dt><dd>Import data</dd>
+        <dt><kbd>T</kbd></dt><dd>Switch day / night</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Clear search, close dialogs</dd>
+      </dl>
+    </div>
+    <div class="dlg-foot" aria-hidden="true"></div>
+  </dialog>
+
+  <input id="fileInput" type="file" multiple hidden />
+  <div class="drop-overlay" id="dropOverlay" hidden><b>Drop to import</b></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

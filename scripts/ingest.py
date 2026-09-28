@@ -463,8 +463,20 @@ def main() -> int:
         "lead": sum(1 for r in records if r.status == "lead"),
         "outputs": [str(PROCESSED / "clients.json"), str(PROCESSED / "clients.csv"), str(DASHBOARD / "clients.json")],
     }
+    write_summary(summary)
     print(json.dumps(summary, indent=2) if args.json else summary)
     return 0
+
+
+def write_summary(summary: dict[str, Any]) -> None:
+    """Save the counts from this run for the dashboard (GET /api/summary).
+
+    Counts only: the duplicate details (names, phones) and local paths stay out.
+    """
+    counts = {k: v for k, v in summary.items() if k not in {"duplicates", "outputs"}}
+    counts["generated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    PROCESSED.mkdir(parents=True, exist_ok=True)
+    (PROCESSED / "import_summary.json").write_text(json.dumps(counts, indent=2), encoding="utf-8")
 
 if __name__ == "__main__":
     raise SystemExit(main())

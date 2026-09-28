@@ -55,7 +55,9 @@ dashboard/clients.json
 
 ## Browser upload workflow
 
-If `python3 server.py` is running, the dashboard **Load data** button uploads `.csv`, `.xlsx`, `.json`, `.xml`, or `.zip` files to the local backend, runs the importer, and refreshes the dashboard.
+If `python3 server.py` is running, the dashboard **Import** button (or dropping files on the page) uploads `.csv`, `.xlsx`, `.json`, `.xml`, or `.zip` files to the local backend, runs the importer, refreshes the dashboard, and shows an import debrief with counts only.
+
+Each importer run writes `data/processed/import_summary.json` (counts only, no names or phones), which the dashboard reads from `GET /api/summary`. It is private generated data like `clients.json` and stays out of git.
 
 ## Expected import format
 
@@ -141,6 +143,7 @@ Run before reporting success:
 python3 scripts/ingest.py --json
 python3 -m py_compile server.py scripts/ingest.py
 python3 -m unittest discover -s tests -v
+node --test tests/js/
 python3 server.py
 ```
 
@@ -150,6 +153,7 @@ In another terminal:
 
 ```bash
 curl -s http://127.0.0.1:8766/api/health
+curl -s http://127.0.0.1:8766/api/summary
 curl -I http://127.0.0.1:8766/
 ```
 
