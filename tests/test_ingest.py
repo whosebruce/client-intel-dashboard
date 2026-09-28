@@ -186,6 +186,12 @@ class EndToEndTests(unittest.TestCase):
             self.assertFalse(summary["geocoding_enabled"])
             written = json.loads((ingest.DASHBOARD / "clients.json").read_text(encoding="utf-8"))
             self.assertEqual(len(written), 2)
+            saved = json.loads((ingest.PROCESSED / "import_summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(saved["records"], 2)
+            self.assertEqual(saved["records_without_coordinates_dropped"], 1)
+            self.assertIn("generated_at", saved)
+            self.assertNotIn("duplicates", saved)  # names and phones stay out of the saved summary
+            self.assertNotIn("outputs", saved)
 
     def test_main_with_mocked_geocoder(self):
         with temp_data_dirs():

@@ -24,6 +24,7 @@ RAW_SMS = ROOT / "data" / "raw" / "sms"
 RAW_TAKEOUT = ROOT / "data" / "raw" / "google_takeout"
 RAW_SHEETS = ROOT / "data" / "raw" / "sheets"
 RAW_JSON = ROOT / "data" / "raw" / "json"
+SUMMARY = ROOT / "data" / "processed" / "import_summary.json"
 
 SAFE_NAME = re.compile(r"[^A-Za-z0-9._ -]+")
 
@@ -47,6 +48,14 @@ def target_for(filename: str) -> Path:
     if suffix in {".zip", ".mbox"}:
         return RAW_TAKEOUT / filename
     return RAW_TAKEOUT / filename
+
+
+def read_summary() -> dict | None:
+    """Counts from the last importer run (written by scripts/ingest.py), or None."""
+    try:
+        return json.loads(SUMMARY.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -79,6 +88,8 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:
         if self.path.startswith("/api/health"):
             return self.json_response(200, {"ok": True, "root": str(ROOT)})
+        if self.path.startswith("/api/summary"):
+            return self.json_response(200, {"ok": True, "summary": read_summary()})
         return super().do_GET()
 
     def do_POST(self) -> None:
@@ -134,7 +145,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main() -> int:
     mimetypes.add_type("application/javascript", ".js")
-    host = "0.0.0.0"
+    host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", "8766"))
     httpd = ThreadingHTTPServer((host, port), Handler)
     print(f"Client Intel Dashboard serving http://{host}:{port}/ from {DASHBOARD}", flush=True)

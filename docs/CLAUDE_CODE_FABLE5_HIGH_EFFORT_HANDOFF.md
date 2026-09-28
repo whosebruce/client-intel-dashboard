@@ -25,21 +25,20 @@ Repo goals:
    - Verify every visible button/control actually does something useful and does not throw console errors.
    - Test desktop and mobile layouts.
    - Controls to verify:
-     - `Load data`
+     - `Import` (and drag-and-drop onto the page)
      - browser-only CSV/JSON import path
      - backend upload import path when `python3 server.py` is running
      - `Export CSV`
      - `Fit territory`
-     - `Hide panels` / `Show panels`
+     - `Focus map` and the Roster / Record / Queue toggles
      - individual panel `Hide` buttons
-     - left rail map/client/follow-up buttons
-     - mobile tabs: Clients, Map, Details, Queue
+     - phone tabs: Roster, Map, Record, Queue
      - client row click
      - marker click
-     - `Copy call sheet`
-     - `Directions`
+     - `Copy sheet`
+     - `Route`
      - search box
-     - status filter
+     - status tiles (the status filter)
    - Add automated Playwright or equivalent browser checks if practical. If not practical, document exact manual QA steps and results.
 
 2. **Exact address geocoding**
@@ -83,7 +82,7 @@ Repo goals:
      - what final report should include without leaking customer rows.
 
 5. **Visual polish without breaking function**
-   - Preserve the current warm dark dashboard direction unless there is a clear reason to adjust.
+   - Follow the Field Manual design system in `docs/DESIGN.md` (rebuilt September 2026).
    - Mobile should remain usable.
    - Map should not sit behind panels in a way that makes controls feel broken.
 
