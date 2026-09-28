@@ -62,6 +62,24 @@ The importer writes `data/processed/clients.json`, `data/processed/clients.csv` 
 
 SMS messages that mention an address, a city, a dollar amount, or payment and lead keywords become review candidates (confidence `low`, or `medium` when a street address is found). SMS rows have no coordinates, so they only reach the map after geocoding.
 
+### From a phone: the SMS CRM extractor
+
+For a phone full of texts, the companion tool [AI Agent SMS CRM Extractor](https://github.com/whosebruce/ai-agent-sms-crm-extractor) does a better job than dropping the raw XML here. It starts from the phone's contacts export (`.vcf`), groups the SMS backup into threads, scores which contacts are customers, and pulls out job and payment clues. Personal threads and verification codes stay out.
+
+It writes `client_intel.csv` in this dashboard's import format: status from the latest payment clue (paid, due or lead), the amount, the saved address and city, the last contact date, and a note with the customer score. The file holds no message text.
+
+```bash
+# in the extractor repo
+sms-crm extract --contacts contacts.vcf --sms sms-backup.xml --output ~/sms-crm-extraction/output \
+  --client-intel ~/path/to/client-intel-dashboard
+
+# back here: those rows have addresses but no coordinates, so geocode them
+export GOOGLE_MAPS_API_KEY="your-key"
+python3 scripts/ingest.py --json --geocode
+```
+
+`--client-intel` drops the file into `data/raw/csv/sms-crm-extractor.csv`. You can also upload `client_intel.csv` with **Import**. Use the extractor or the raw XML import for a given backup, not both, or the same texts come in twice.
+
 ### Column format
 
 [`docs/IMPORT_FORMAT.md`](docs/IMPORT_FORMAT.md) covers the schema and header mapping. [`templates/client_import_template.csv`](templates/client_import_template.csv) is an empty header template.

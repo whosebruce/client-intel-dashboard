@@ -53,6 +53,10 @@ The dashboard reads:
 dashboard/clients.json
 ```
 
+## SMS backups: use the extractor first
+
+If the owner's customer history is in their phone, run the companion [SMS CRM extractor](https://github.com/whosebruce/ai-agent-sms-crm-extractor) on their contacts `.vcf` and SMS Backup & Restore `.xml` before importing here, following that repo's `AGENT_README.md`. Pass `--client-intel <this checkout>` so it drops `data/raw/csv/sms-crm-extractor.csv`, then run `python3 scripts/ingest.py --json --geocode`. Don't also put the same `.xml` in `data/raw/sms/`, or the texts are imported twice. Both tools stay local; report counts only.
+
 ## Browser upload workflow
 
 If `python3 server.py` is running, the dashboard **Import** button (or dropping files on the page) uploads `.csv`, `.xlsx`, `.json`, `.xml`, or `.zip` files to the local backend, runs the importer, refreshes the dashboard, and shows an import debrief with counts only.

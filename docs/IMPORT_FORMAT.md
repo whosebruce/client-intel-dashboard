@@ -62,6 +62,10 @@ The summary distinguishes where coordinates came from:
 - `failed_geocodes` — rows Google could not resolve
 - `records_without_coordinates_dropped` — rows left off the map entirely
 
+## From an SMS backup
+
+The [SMS CRM extractor](https://github.com/whosebruce/ai-agent-sms-crm-extractor) turns a contacts `.vcf` and an SMS Backup & Restore `.xml` into `client_intel.csv`, already in this schema, plus `id` (a stable contact id) and `confidence` (`sms likely` or `sms possible`). Its `status` comes from the latest payment clue in the texts and should be checked against real records. It leaves `lat`, `lng` and `follow_up` blank.
+
 ## What the other agent should report
 
 After import, report only counts/paths/URL/blockers — never raw customer rows:

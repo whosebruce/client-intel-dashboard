@@ -43,6 +43,7 @@ export function createImporter({ isServerOnline, onServerImported, onPreview, on
         <span class="types">.CSV · .XLSX · .JSON · .XML (SMS BACKUP) · .ZIP</span>
       </div>
       <p class="mode-note">Best columns: <code>name, address, city, lat, lng, status, phone, last_contact, value, follow_up, notes</code>. Status is paid, unpaid or lead. Common headers like Customer Name, Service Address and Balance are recognized.</p>
+      <p class="mode-note">Customer history in a phone? Run the <a href="https://github.com/whosebruce/ai-agent-sms-crm-extractor" target="_blank" rel="noopener">SMS CRM extractor</a> on the contacts export and SMS backup first. It sorts customers from personal threads and writes <code>client_intel.csv</code> for this import.</p>
       <div class="dlg-row">
         <button class="btn" data-imp="template">Download CSV template</button>
         <button class="btn" data-imp="demo">Load demo data</button>
