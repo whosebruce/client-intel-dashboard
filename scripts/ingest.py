@@ -392,6 +392,13 @@ def geocode_records(records: list[ClientRecord], api_key: str | None, limit: int
 
 
 def merge_records(records: list[ClientRecord]) -> tuple[list[ClientRecord], int]:
+    """Merge duplicates; return (records with coordinates, count without)."""
+    mapped, unmapped = merge_all(records)
+    return mapped, len(unmapped)
+
+
+def merge_all(records: list[ClientRecord]) -> tuple[list[ClientRecord], list[ClientRecord]]:
+    """Merge duplicates; return (records with coordinates, records without)."""
     merged: dict[str, ClientRecord] = {}
     for rec in records:
         rec.clean()
@@ -411,16 +418,24 @@ def merge_records(records: list[ClientRecord]) -> tuple[list[ClientRecord], int]
             old.lat, old.lng = rec.lat, rec.lng
         old.evidence = (old.evidence or []) + (rec.evidence or [])
     merged_all = [r.clean() for r in merged.values()]
-    mapped = sorted([r for r in merged_all if r.lat is not None and r.lng is not None], key=lambda r: (r.city, r.name))
-    return mapped, len(merged_all) - len(mapped)
+    has_coords = lambda r: r.lat is not None and r.lng is not None  # noqa: E731
+    by_place = lambda r: (r.city, r.name)  # noqa: E731
+    mapped = sorted([r for r in merged_all if has_coords(r)], key=by_place)
+    unmapped = sorted([r for r in merged_all if not has_coords(r)], key=by_place)
+    return mapped, unmapped
 
 
-def write_outputs(records: list[ClientRecord]) -> None:
+def write_outputs(records: list[ClientRecord], unmapped: list[ClientRecord] | None = None) -> None:
+    """clients.json holds records with coordinates (the map); unmapped.json holds the rest,
+    which the dashboard lists in the roster as off-map."""
     PROCESSED.mkdir(parents=True, exist_ok=True)
     DASHBOARD.mkdir(parents=True, exist_ok=True)
     data = [asdict(r) for r in records]
     for target in [PROCESSED / "clients.json", DASHBOARD / "clients.json"]:
         target.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    off_map = json.dumps([asdict(r) for r in unmapped or []], indent=2)
+    for target in [PROCESSED / "unmapped.json", DASHBOARD / "unmapped.json"]:
+        target.write_text(off_map, encoding="utf-8")
     csv_path = PROCESSED / "clients.csv"
     fields = list(asdict(records[0]).keys()) if records else list(ClientRecord(id="x").__dataclass_fields__.keys())
     with csv_path.open("w", newline="", encoding="utf-8") as f:
@@ -442,8 +457,9 @@ def main() -> int:
     raw_records = parse_csv_files() + parse_xlsx_files() + parse_json_files() + parse_sms_files()
     duplicates = duplicate_report(raw_records)
     geo_stats = geocode_records(raw_records, os.environ.get("GOOGLE_MAPS_API_KEY") if args.geocode else None, args.geocode_limit, args.refresh_geocodes)
-    records, dropped_no_coords = merge_records(raw_records)
-    write_outputs(records)
+    records, unmapped = merge_all(raw_records)
+    dropped_no_coords = len(unmapped)
+    write_outputs(records, unmapped)
     summary = {
         "raw_records": len(raw_records),
         "records": len(records),

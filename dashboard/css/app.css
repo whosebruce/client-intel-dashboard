@@ -292,6 +292,7 @@ button { cursor: pointer; touch-action: manipulation; }
 .chip--overdue { color: var(--alert-text); border-color: var(--alert); }
 .chip--today { color: var(--text); border-color: var(--text-3); }
 .chip--mono { font: 500 10px/1 var(--mono); letter-spacing: 1px; }
+.chip--offmap { border-style: dashed; border-color: var(--text-3); color: var(--text); }
 
 .empty {
   margin: 12px 4px; padding: 22px 16px 26px; position: relative; text-align: left;

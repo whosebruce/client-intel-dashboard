@@ -21,11 +21,11 @@ Open `http://127.0.0.1:8766/`, then click **Import** (or drop files anywhere on 
 
 The screen is three panels around the map, with flat square panels, mono labels and one yellow action ([`docs/DESIGN.md`](docs/DESIGN.md)).
 
-- **Roster.** Status tiles for All, Paid, Due and Leads show the count and dollar total and double as the status filter. Below them are a ratio bar, search (name, address, notes or phone digits), a sort menu (follow-up, name, value, last contact, city) and **Map area**, which limits the list to what's on screen.
+- **Roster.** Status tiles for All, Paid, Due and Leads show the count and dollar total and double as the status filter. Below them are a ratio bar, search (name, address, notes or phone digits), a sort menu (follow-up, name, value, last contact, city) and **Map area**, which limits the list to what's on screen. Records without coordinates are listed too, tagged **Off-map**; a notice counts them and **Show off-map** lists just those.
 - **Map.** One clickable marker per mapped record, colored by status, with a red corner when the follow-up is overdue. There's no heatmap and no clustering. Zoomed out, markers shrink to small squares; from zoom 12 they show initials. **Fit territory** frames the filtered markers.
-- **Record.** Status, follow-up and confidence chips, **Call** and **Text** links, **Route** (Google Maps directions), **Copy sheet** (a plain-text call sheet), last contact and follow-up with days ago or days overdue, notes, the importer's evidence, and the five closest records.
+- **Record.** Status, follow-up and confidence chips, **Call** and **Text** links, **Route** (Google Maps directions), **Copy sheet** (a plain-text call sheet), last contact and follow-up with days ago or days overdue, notes, the importer's evidence, and the five closest records. An off-map record says it isn't on the map yet and why; Route still works from its address.
 - **Follow-up queue.** Records grouped into Overdue, Today, Next 7 days, Later and No date. Click any card to open it.
-- **Import** opens a dialog that says whether the local server is online, takes files by picker or drag and drop, and finishes with an import debrief: files saved, rows read, records on the map, merged duplicates, duplicate groups, records left off the map, and geocoding counts.
+- **Import** opens a dialog that says whether the local server is online, takes files by picker or drag and drop, and finishes with an import debrief: files saved, rows read, records on the map, merged duplicates, duplicate groups, off-map records, and geocoding counts.
 - **Export CSV** writes all loaded records in the import schema.
 - **Focus map** hides every panel. The Roster, Record and Queue buttons show or hide one panel at a time.
 - **Day / Night** switches between the dark theme and a light one for bright rooms or outdoors. The choice is remembered in this browser.
@@ -43,7 +43,7 @@ Map tiles come from OpenStreetMap, so the map background needs an internet conne
 
 With `server.py` running, **Import** accepts `.csv`, `.xlsx`, `.json`, `.xml` and `.zip`. The server saves each file under `data/raw/`, runs the importer and refreshes the map. The dialog also has **Download CSV template** for the column layout.
 
-If the backend isn't reachable, the page falls back to an in-browser preview for CSV and JSON only. Rows without `lat`/`lng` are skipped, nothing is saved, and the status bar says **Browser preview · not saved** until you reload.
+If the backend isn't reachable, the page falls back to an in-browser preview for CSV and JSON only. Rows without `lat`/`lng` are listed as off-map, nothing is saved, and the status bar says **Browser preview · not saved** until you reload.
 
 `.zip` uploads are saved to `data/raw/google_takeout/`, but the importer doesn't read that folder yet.
 
@@ -58,7 +58,7 @@ data/raw/json/    JSON arrays, or objects with a clients, records or rows list
 data/raw/sms/     Android "SMS Backup & Restore" XML
 ```
 
-The importer writes `data/processed/clients.json`, `data/processed/clients.csv` and `dashboard/clients.json`, then prints a summary with record, duplicate, status and geocoding counts.
+The importer writes `data/processed/clients.json`, `data/processed/clients.csv` and `dashboard/clients.json` (records with coordinates), plus `unmapped.json` in both folders (records without), then prints a summary with record, duplicate, status and geocoding counts.
 
 SMS messages that mention an address, a city, a dollar amount, or payment and lead keywords become review candidates (confidence `low`, or `medium` when a street address is found). SMS rows have no coordinates, so they only reach the map after geocoding.
 
@@ -88,7 +88,7 @@ python3 scripts/ingest.py --json --geocode
 name,address,city,lat,lng,status,phone,last_contact,value,follow_up,notes
 ```
 
-`status` is `paid`, `unpaid` or `lead`; the UI shows `unpaid` as "due". Common aliases such as `Customer Name`, `Service Address`, `Phone Number` and `Balance` are recognized. Rows without coordinates are left off the map and counted as `records_without_coordinates_dropped`.
+`status` is `paid`, `unpaid` or `lead`; the UI shows `unpaid` as "due". Common aliases such as `Customer Name`, `Service Address`, `Phone Number` and `Balance` are recognized. Rows without coordinates go to `unmapped.json`, show in the roster as off-map, and are counted as `records_without_coordinates_dropped` (the name predates the roster listing; it means "not on the map").
 
 ## Exact-address markers (optional)
 
@@ -108,13 +108,13 @@ Geocoded records are labeled `exact-geocode` for rooftop or interpolated street 
 
 Records that share an exact coordinate are fanned into a small ring (about 15 m) so each marker stays clickable at max zoom, and the popup and the record panel say how many share the spot. **Fit territory** frames the filtered markers, capped at zoom 13. Clicking a record zooms to at least 13 and keeps any closer zoom you've set.
 
-Each importer run also writes counts only (no names, phones or paths) to `data/processed/import_summary.json`. `GET /api/summary` serves it, and the roster shows a notice when records were left off the map for missing coordinates.
+Each importer run also writes counts only (no names, phones or paths) to `data/processed/import_summary.json`. `GET /api/summary` serves it for the status bar. The roster's off-map notice counts the records in `unmapped.json`.
 
 The importer reports likely duplicates by normalized phone number, normalized address, or name plus city (`duplicate_groups` in the summary). It merges records that share a phone number, or an address when there's no phone. A `paid` status wins over `unpaid` and `lead` when records merge.
 
 ## Privacy
 
-Raw exports and generated datasets stay out of git: `.gitignore` excludes `data/raw/**`, `data/processed/**`, `dashboard/clients.json` and `.env`. The code can live in a public repo while the customer files stay on the machine that runs it.
+Raw exports and generated datasets stay out of git: `.gitignore` excludes `data/raw/**`, `data/processed/**`, `dashboard/clients.json`, `dashboard/unmapped.json` and `.env`. The code can live in a public repo while the customer files stay on the machine that runs it.
 
 [`AGENT_README.md`](AGENT_README.md) has copy-paste instructions for an AI agent that runs the import on someone's machine and reports only counts, paths and the dashboard URL.
 

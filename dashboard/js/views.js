@@ -36,8 +36,12 @@ export function renderNotices(notices) {
     </div>`).join('');
 }
 
-export function renderList(rows, { selectedId, today, shown, total, hasData }) {
-  $('listHead').innerHTML = hasData ? `<span>Showing ${shown} of ${total}</span><span>${shown ? '' : 'No match'}</span>` : '';
+const offMapChip = '<span class="chip chip--offmap" title="No coordinates yet, so not on the map">Off-map</span>';
+
+export function renderList(rows, { selectedId, today, shown, total, hasData, offMapOnly }) {
+  $('listHead').innerHTML = hasData
+    ? `<span>Showing ${shown} of ${total}${offMapOnly ? ' · off-map only' : ''}</span>${offMapOnly ? '<button class="link-btn" data-action="where-all">Show all</button>' : `<span>${shown ? '' : 'No match'}</span>`}`
+    : '';
   if (!hasData) {
     $('list').innerHTML = `<li class="empty">
       <b>No records loaded</b>
@@ -57,7 +61,7 @@ export function renderList(rows, { selectedId, today, shown, total, hasData }) {
       <span class="row-name">${esc(r.name)}</span>
       <span class="row-value">${esc(r.value || '')}</span>
       <span class="row-addr">${esc(r.address || r.city || 'No address')}</span>
-      <span class="row-meta">${statusChip(r.status)}${followChip(fu)}${r.phone ? `<span class="chip chip--mono">${esc(r.phone)}</span>` : ''}</span>
+      <span class="row-meta">${statusChip(r.status)}${r.mapped ? '' : offMapChip}${followChip(fu)}${r.phone ? `<span class="chip chip--mono">${esc(r.phone)}</span>` : ''}</span>
     </button></li>`;
   }).join('');
 }
@@ -77,14 +81,15 @@ export function renderRecord(rec, { today, twins, nearby, hasData }) {
   body.innerHTML = `
     <div class="rec-head">
       <h3 id="recName">${esc(rec.name)}</h3>
-      <div class="rec-chips">${statusChip(rec.status)}${followChip(fu)}${confidence}</div>
+      <div class="rec-chips">${statusChip(rec.status)}${rec.mapped ? '' : offMapChip}${followChip(fu)}${confidence}</div>
       <p class="rec-addr">${esc(rec.address || rec.city || 'No address on file')}</p>
+      ${rec.mapped ? '' : `<p class="rec-twins">Not on the map yet: no coordinates. Add lat/lng, or set GOOGLE_MAPS_API_KEY and re-import to geocode ${rec.address ? 'this address' : 'an address'}.</p>`}
       ${twins > 1 ? `<p class="rec-twins">${twins} records share this exact location. Their markers are fanned into a ring.</p>` : ''}
     </div>
     <div class="rec-actions">
       <a class="btn" id="callBtn" href="${phone ? D.telHref(rec.phone) : '#'}" aria-disabled="${!phone}">Call</a>
       <a class="btn" id="textBtn" href="${phone ? D.smsHref(rec.phone) : '#'}" aria-disabled="${!phone}">Text</a>
-      <button class="btn" id="directionsBtn" data-action="directions">Route</button>
+      <button class="btn" id="directionsBtn" data-action="directions"${D.directionsUrl(rec) ? '' : ' disabled title="No address or coordinates yet"'}>Route</button>
       <button class="btn" id="copyBtn" data-action="copy">Copy sheet</button>
     </div>
     <div class="facts">
@@ -93,7 +98,7 @@ export function renderRecord(rec, { today, twins, nearby, hasData }) {
       <div class="fact"><label>Last contact</label><div>${esc(rec.last_contact || '—')}</div>${lc.days !== null ? `<small>${esc(lc.label.split(' · ')[1])}</small>` : ''}</div>
       <div class="fact"><label>Follow-up</label><div>${esc(rec.follow_up || '—')}</div>${fu.days !== null ? `<small class="${fu.bucket === 'overdue' ? 'is-overdue' : ''}">${esc(fu.label.split(' · ')[1])}</small>` : ''}</div>
       <div class="fact"><label>City</label><div>${esc(rec.city || '—')}</div></div>
-      <div class="fact"><label>Coordinates</label><div class="mono-val">${rec.lat.toFixed(5)}, ${rec.lng.toFixed(5)}</div></div>
+      <div class="fact"><label>Coordinates</label>${rec.mapped ? `<div class="mono-val">${rec.lat.toFixed(5)}, ${rec.lng.toFixed(5)}</div>` : '<div>—</div><small>Off-map</small>'}</div>
     </div>
     <div class="rec-block"><h4>Notes</h4><p class="rec-notes">${esc(rec.notes || 'No notes.')}</p></div>
     ${evidence.length ? `<div class="rec-block"><h4>Evidence${rec.source ? ` // ${esc(rec.source)}` : ''}</h4><ul class="evidence">${evidence.slice(0, 6).map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>` : ''}
@@ -113,7 +118,7 @@ export function renderQueue(groups, { selectedId, hasData }) {
       <h4>${g.label}<span>${items.length}</span></h4>
       <ul>${items.length ? items.map(({ rec, info }) => `<li><button class="qitem qitem--${rec.status}" data-id="${esc(rec.id)}" aria-current="${rec.id === selectedId}">
         <time>${esc(info.label)}</time><b>${esc(rec.name)}</b>
-        <span>${D.STATUS_LABEL[rec.status]} · ${esc(rec.city || rec.address || 'no location')}${rec.value ? ` · ${esc(rec.value)}` : ''}</span>
+        <span>${D.STATUS_LABEL[rec.status]} · ${esc(rec.city || rec.address || 'no location')}${rec.value ? ` · ${esc(rec.value)}` : ''}${rec.mapped ? '' : ' · off-map'}</span>
       </button></li>`).join('') : `<li class="qempty">${g.key === 'overdue' ? 'Clear' : 'Nothing here'}</li>`}</ul>
     </div>`;
   }).join('');

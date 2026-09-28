@@ -60,7 +60,7 @@ The summary distinguishes where coordinates came from:
 - `geocoded_approximate` — Google could only resolve a centroid/approximate point
 - `kept_existing_coordinates` — rows already had usable lat/lng (replace with `--refresh-geocodes`)
 - `failed_geocodes` — rows Google could not resolve
-- `records_without_coordinates_dropped` — rows left off the map entirely
+- `records_without_coordinates_dropped` — records with no coordinates. They're written to `unmapped.json` and listed in the roster as off-map, but have no marker
 
 ## From an SMS backup
 

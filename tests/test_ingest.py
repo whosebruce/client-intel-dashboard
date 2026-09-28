@@ -93,6 +93,15 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(dropped, 1)
         self.assertEqual(mapped[0].value, "$50")
 
+    def test_merge_all_keeps_unmapped_records(self):
+        a = ingest.ClientRecord(id="a", name="On Map", phone="5550000011", lat=32.0, lng=-117.0)
+        b = ingest.ClientRecord(id="b", name="No Coords", phone="5550000012", address="9 Nowhere Rd")
+        c = ingest.ClientRecord(id="c", name="", phone="5550000012", status="paid", value="$75")
+        mapped, unmapped = ingest.merge_all([a, b, c])
+        self.assertEqual([r.name for r in mapped], ["On Map"])
+        self.assertEqual([r.name for r in unmapped], ["No Coords"])
+        self.assertEqual((unmapped[0].status, unmapped[0].value), ("paid", "$75"))  # duplicates still merge
+
     def test_paid_status_wins(self):
         a = ingest.ClientRecord(id="a", phone="5550000002", status="unpaid", lat=1.0, lng=1.0)
         b = ingest.ClientRecord(id="b", phone="5550000002", status="paid")
@@ -186,6 +195,9 @@ class EndToEndTests(unittest.TestCase):
             self.assertFalse(summary["geocoding_enabled"])
             written = json.loads((ingest.DASHBOARD / "clients.json").read_text(encoding="utf-8"))
             self.assertEqual(len(written), 2)
+            off_map = json.loads((ingest.DASHBOARD / "unmapped.json").read_text(encoding="utf-8"))
+            self.assertEqual([r["name"] for r in off_map], ["Test Gamma"])
+            self.assertIsNone(off_map[0]["lat"])
             saved = json.loads((ingest.PROCESSED / "import_summary.json").read_text(encoding="utf-8"))
             self.assertEqual(saved["records"], 2)
             self.assertEqual(saved["records_without_coordinates_dropped"], 1)

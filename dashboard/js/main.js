@@ -19,14 +19,14 @@ const state = {
   serverOnline: false,
   summary: null,
   selectedId: null,
-  filter: { status: 'all', query: '' },
+  filter: { status: 'all', query: '', where: 'all' },
   sort: D.SORTS[store.get('sort')] ? store.get('sort') : 'follow_up',
   inView: false,
   hidden: { roster: false, record: false, queue: false },
   focus: false,
   tab: 'roster',
 };
-let view = { today: D.startOfDay(), matched: [], roster: [] };
+let view = { today: D.startOfDay(), matched: [], onMap: [], roster: [] };
 
 const map = createMap($('map'), { onSelect: (id) => select(id, { source: 'map' }) });
 
@@ -55,19 +55,20 @@ const byId = (id) => state.clients.find((r) => r.id === id) || null;
 function compute() {
   const today = D.startOfDay();
   const matched = state.clients.filter((r) => D.matches(r, state.filter));
-  const listed = state.inView ? matched.filter(map.contains) : matched;
-  view = { today, matched, roster: D.sortRecords(listed, state.sort, today) };
+  const onMap = matched.filter((r) => r.mapped);
+  const listed = state.inView ? onMap.filter(map.contains) : matched;
+  view = { today, matched, onMap, roster: D.sortRecords(listed, state.sort, today) };
 }
 
 function render({ markers = true } = {}) {
   compute();
-  const { today, matched, roster } = view;
+  const { today, matched, onMap, roster } = view;
   const hasData = state.clients.length > 0;
   V.renderTiles(D.totals(state.clients), state.filter.status);
   V.renderNotices(notices());
-  V.renderList(roster, { selectedId: state.selectedId, today, shown: roster.length, total: state.clients.length, hasData });
+  V.renderList(roster, { selectedId: state.selectedId, today, shown: roster.length, total: state.clients.length, hasData, offMapOnly: state.filter.where === 'offmap' });
   V.renderQueue(D.queueGroups(matched, today), { selectedId: state.selectedId, hasData });
-  if (markers) map.sync(matched, (rec) => ({ overdue: D.followUpInfo(rec, today).bucket === 'overdue' }));
+  if (markers) map.sync(onMap, (rec) => ({ overdue: D.followUpInfo(rec, today).bucket === 'overdue' }));
   renderRecord();
   renderChrome();
 }
@@ -87,10 +88,12 @@ function renderRecord() {
 }
 
 function renderChrome() {
-  const n = view.matched.length;
+  const n = view.onMap.length;
+  const off = view.matched.length - n;
+  const offText = off ? ` · ${off} off-map` : '';
   const label = D.territoryLabel(view.matched);
-  $('territory').textContent = state.clients.length ? `Territory // ${label} · ${n} on map` : 'Territory // standing by';
-  $('mapCount').textContent = `${n} on map`;
+  $('territory').textContent = state.clients.length ? `Territory // ${label} · ${n} on map${offText}` : 'Territory // standing by';
+  $('mapCount').textContent = `${n} on map${offText}`;
   $('exportBtn').disabled = !state.clients.length;
   $('inViewBtn').setAttribute('aria-pressed', state.inView);
 
@@ -113,9 +116,20 @@ function notices() {
     out.push({ tone: 'warn', title: 'Demo data // synthetic', body: 'Nothing here is real and nothing is saved. Import your own files to replace it.', actions: [{ label: 'Import data', action: 'import' }, { label: 'Clear demo', action: 'clear-demo' }] });
   } else if (state.source === 'preview') {
     out.push({ tone: 'warn', title: 'Browser preview // not saved', body: 'Start python3 server.py to keep imports and read XLSX or SMS backups.', actions: [{ label: 'Import again', action: 'import' }] });
+  }
+  const off = state.clients.filter((r) => !r.mapped).length;
+  const filtering = state.filter.where === 'offmap';
+  if (off) {
+    out.push({
+      tone: 'warn',
+      title: `${off} record${off === 1 ? '' : 's'} off-map`,
+      body: 'No coordinates yet, so they are in the roster but not on the map. Add lat/lng columns, or set GOOGLE_MAPS_API_KEY and re-import to geocode street addresses.',
+      actions: [filtering ? { label: 'Show all', action: 'where-all' } : { label: 'Show off-map', action: 'where-offmap' }],
+    });
   } else if (state.source === 'file' && state.summary?.records_without_coordinates_dropped > 0) {
+    // clients.json from an importer run before unmapped.json existed.
     const n = state.summary.records_without_coordinates_dropped;
-    out.push({ tone: 'bad', title: `${n} record${n === 1 ? '' : 's'} off-map`, body: 'No coordinates. Add lat/lng columns, or set GOOGLE_MAPS_API_KEY and re-import to geocode street addresses.' });
+    out.push({ tone: 'bad', title: `${n} record${n === 1 ? '' : 's'} off-map`, body: 'No coordinates. Re-run the importer to list them in the roster, and add lat/lng or set GOOGLE_MAPS_API_KEY to put them on the map.' });
   }
   return out;
 }
@@ -126,7 +140,7 @@ function select(id, { source = 'list' } = {}) {
   state.selectedId = id;
   if (!isPhone() && state.hidden.record) { state.hidden.record = false; applyLayout(); }
   render({ markers: false });
-  map.select(id, { fly: true });
+  map.select(id, { fly: byId(id).mapped });
   document.querySelector(`#list [data-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' });
   if (isPhone()) setTab('record');
   else if (source !== 'list') $('record').querySelector('.record-body').scrollTop = 0;
@@ -143,7 +157,7 @@ function step(delta) {
 function setData(records, source) {
   state.clients = records;
   state.source = records.length || source === 'file' ? source : 'none';
-  state.filter = { status: 'all', query: '' };
+  state.filter = { status: 'all', query: '', where: 'all' };
   state.inView = false;
   $('search').value = '';
   state.selectedId = D.sortRecords(records, state.sort, D.startOfDay())[0]?.id || null;
@@ -156,8 +170,10 @@ async function loadServerData() {
   try {
     const res = await fetch('clients.json', { cache: 'no-store' });
     if (res.ok) {
-      const { records } = D.cleanRows(D.rowsFromJson(await res.json()));
-      setData(records, 'file');
+      const rows = D.rowsFromJson(await res.json());
+      // Records without coordinates (optional file; older imports don't have it).
+      const off = await fetch('unmapped.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+      setData(D.cleanRows(rows.concat(D.rowsFromJson(off))).records, 'file');
       return true;
     }
   } catch { /* no clients.json yet */ }
@@ -178,7 +194,7 @@ async function checkServer() {
 
 function loadDemo() {
   state.summary = state.source === 'file' ? state.summary : null;
-  setData(demoRecords(new Date()), 'demo');
+  setData(D.cleanRows(demoRecords(new Date())).records, 'demo');
   toast('Demo data loaded. Every record is synthetic and nothing is saved.');
 }
 
@@ -187,7 +203,7 @@ async function clearDemo() {
 }
 
 // ── Actions ──────────────────────────────────────────────────
-function fit({ animate = true } = {}) { map.fit(view.matched, { animate }); }
+function fit({ animate = true } = {}) { map.fit(view.onMap, { animate }); }
 
 async function copyCallSheet() {
   const rec = byId(state.selectedId);
@@ -204,7 +220,9 @@ async function copyCallSheet() {
 function directions() {
   const rec = byId(state.selectedId);
   if (!rec) return toast('Pick a record first.');
-  window.open(D.directionsUrl(rec), '_blank', 'noopener');
+  const url = D.directionsUrl(rec);
+  if (!url) return toast('No address or coordinates for this record yet.');
+  window.open(url, '_blank', 'noopener');
 }
 
 function exportCsv() {
@@ -232,7 +250,9 @@ const ACTIONS = {
   import: () => importer.open(),
   demo: loadDemo,
   'clear-demo': clearDemo,
-  'clear-filters': () => { state.filter = { status: 'all', query: '' }; state.inView = false; $('search').value = ''; render(); },
+  'clear-filters': () => { state.filter = { status: 'all', query: '', where: 'all' }; state.inView = false; $('search').value = ''; render(); },
+  'where-offmap': () => { state.filter.where = 'offmap'; state.inView = false; render(); },
+  'where-all': () => { state.filter.where = 'all'; render(); },
   copy: copyCallSheet,
   directions,
   export: exportCsv,
@@ -298,7 +318,11 @@ function wire() {
   $('sort').innerHTML = Object.entries(D.SORTS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
   $('sort').value = state.sort;
   $('sort').addEventListener('change', (e) => { state.sort = e.target.value; store.set('sort', state.sort); render({ markers: false }); });
-  $('inViewBtn').addEventListener('click', () => { state.inView = !state.inView; render({ markers: false }); });
+  $('inViewBtn').addEventListener('click', () => {
+    state.inView = !state.inView;
+    if (state.inView) state.filter.where = 'all'; // map-area and off-map-only would always be empty together
+    render();
+  });
   $('tiles').addEventListener('click', (e) => {
     const b = e.target.closest('[data-status]');
     if (!b) return;

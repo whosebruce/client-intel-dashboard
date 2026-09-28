@@ -4,7 +4,7 @@ This repository is intended for a Hermes/AI agent to clone onto a user's own mac
 
 ## Privacy rules
 
-- Treat all files in `data/raw/`, `data/processed/`, and `dashboard/clients.json` as private customer data.
+- Treat all files in `data/raw/`, `data/processed/`, `dashboard/clients.json` and `dashboard/unmapped.json` as private customer data.
 - Do **not** commit private CRM exports, Google Sheets exports, SMS XML, Google Takeout ZIPs, generated `clients.json`, or generated `clients.csv`.
 - Do **not** upload raw customer files or message contents to cloud LLMs/API services unless the human explicitly authorizes that exact action.
 - Prefer local deterministic parsing first. If AI extraction is needed, send the smallest possible snippet and preserve evidence/confidence.
@@ -50,7 +50,8 @@ python3 scripts/ingest.py --json
 The dashboard reads:
 
 ```text
-dashboard/clients.json
+dashboard/clients.json     records with coordinates (map markers)
+dashboard/unmapped.json    records without coordinates (listed in the roster as off-map)
 ```
 
 ## SMS backups: use the extractor first

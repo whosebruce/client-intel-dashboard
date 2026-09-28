@@ -72,6 +72,11 @@ export function demoRecords(today = new Date()) {
       source: 'demo',
     };
   });
+  // Two records with an address but no coordinates yet: they show in the roster as off-map.
+  records.push(
+    { id: 'demo-37', name: 'Westside Glass', address: '742 Sample Ave, Lemon Grove, CA', city: 'Lemon Grove', status: 'lead', phone: '555-0190', last_contact: iso(shift(base, -12)), value: '$900', follow_up: iso(shift(base, 3)), notes: 'Referral, wants a storefront quote. No coordinates yet.', confidence: 'demo', evidence: ['Synthetic demo record'], source: 'demo' },
+    { id: 'demo-38', name: 'Irene Q.', address: '19 Demo St, La Mesa, CA', city: 'La Mesa', status: 'unpaid', phone: '555-0191', last_contact: iso(shift(base, -20)), value: '$180', follow_up: iso(shift(base, -2)), notes: 'Balance after the gate repair. No coordinates yet.', confidence: 'demo', evidence: ['Synthetic demo record'], source: 'demo' },
+  );
   // Two records at one exact spot, to show the fanned-marker ring.
   records[1].lat = records[0].lat; records[1].lng = records[0].lng;
   records[1].address = records[0].address;

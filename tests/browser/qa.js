@@ -25,6 +25,7 @@ const collectErrors = (page, sink) => {
 const tileNoise = (e) => /tile\.openstreetmap\.org|net::ERR|Failed to load resource/i.test(e);
 const count = (page) => page.evaluate(() => cid.state.clients.length);
 const markerCount = (page) => page.evaluate(() => cid.markers.size);
+const mappedCount = (page) => page.evaluate(() => cid.state.clients.filter((c) => c.mapped).length);
 const settle = (page, ms = 150) => page.waitForTimeout(ms);
 
 // Use Playwright's bundled Chromium, or the installed Chrome if that build isn't downloaded.
@@ -44,7 +45,9 @@ const launch = () => chromium.launch().catch(() => chromium.launch({ channel: 'c
   const status = await page.textContent('#dataStatus');
   check('page loads clients.json and sees the server', /clients\.json/.test(status) && /server online/.test(status), status.trim());
   const clientCount = await count(page);
-  check('marker count matches mapped records', clientCount > 0 && (await markerCount(page)) === clientCount, `${await markerCount(page)}/${clientCount}`);
+  const mapped = await mappedCount(page);
+  check('marker count matches mapped records', mapped > 0 && (await markerCount(page)) === mapped, `${await markerCount(page)}/${mapped}`);
+  check('the no-coordinates fixture row loads as an off-map record', clientCount === mapped + 1, `${clientCount} records, ${mapped} mapped`);
   const positions = await page.evaluate(() => [...cid.markers.values()].map((m) => { const p = m.marker.getLatLng(); return p.lat.toFixed(7) + ',' + p.lng.toFixed(7); }));
   check('same-coordinate records get distinct marker positions (no silent stacking)', new Set(positions).size === positions.length, positions.join(' | '));
   check('no heatmap / no cluster plugin loaded', !(await page.evaluate(() => !!(L.heatLayer || L.markerClusterGroup))));
@@ -80,6 +83,23 @@ const launch = () => chromium.launch().catch(() => chromium.launch({ channel: 'c
   check('Map area toggle limits the roster to the visible map', (await page.locator('#list .row').count()) === 0 && (await page.getAttribute('#inViewBtn', 'aria-pressed')) === 'true');
   await page.click('#inViewBtn');
   await settle(page);
+
+  // ---- B2. off-map records ----
+  check('off-map notice counts records without coordinates', /1 record off-map/.test(await page.textContent('#notices')));
+  check('off-map record is in the roster with an Off-map tag', (await page.locator('#list .row:has(.chip--offmap)').count()) === 1);
+  await page.click('#notices [data-action="where-offmap"]');
+  await settle(page);
+  check('Show off-map lists only off-map records', (await page.locator('#list .row').count()) === 1 && (await page.textContent('#list .row .row-name')).trim() === 'Test Delta');
+  const markersBeforeOff = await markerCount(page);
+  await page.locator('#list .row').first().click();
+  await settle(page, 300);
+  const recText = await page.textContent('#recordBody');
+  check('off-map record opens with a not-on-the-map note', /Not on the map yet/.test(recText) && /Off-map/.test(recText));
+  check('off-map record keeps Route (it has an address)', !(await page.isDisabled('#directionsBtn')));
+  check('selecting an off-map record draws no marker', (await markerCount(page)) === markersBeforeOff);
+  await page.click('#listHead [data-action="where-all"]');
+  await settle(page);
+  check('Show all brings every record back', (await page.locator('#list .row').count()) === clientCount);
 
   // ---- C. row click + marker click ----
   const rowName = (await page.locator('#list .row .row-name').nth(1).textContent()).trim();
@@ -180,7 +200,7 @@ const launch = () => chromium.launch().catch(() => chromium.launch({ channel: 'c
   check('Import opens the import dialog with server mode', (await page.locator('#importDialog').isVisible()) && /server online/i.test(await page.textContent('#importBody')));
   await page.click('[data-imp="demo"]');
   await settle(page, 300);
-  check('Load demo data swaps in synthetic records', (await page.evaluate(() => cid.state.source)) === 'demo' && (await count(page)) === 36 && /Demo data/.test(await page.textContent('#notices')));
+  check('Load demo data swaps in synthetic records', (await page.evaluate(() => cid.state.source)) === 'demo' && (await count(page)) === 38 && (await markerCount(page)) === 36 && /Demo data/.test(await page.textContent('#notices')));
   await page.click('[data-action="clear-demo"]');
   await page.waitForFunction(() => cid.state.source === 'file');
   check('Clear demo goes back to clients.json', (await count(page)) === clientCount);
@@ -193,10 +213,14 @@ const launch = () => chromium.launch().catch(() => chromium.launch({ channel: 'c
     'Preview NoCoords,"3 Preview Way, Faketown, CA",Faketown,,,lead,555-111-0003\n';
   await page.setInputFiles('#fileInput', { name: 'preview.csv', mimeType: 'text/csv', buffer: Buffer.from(csvBody) });
   await page.waitForFunction(() => cid.state.source === 'preview', null, { timeout: 3000 }).catch(() => {});
-  check('browser-only CSV preview maps coordinate rows', (await page.textContent('#dataStatus')).includes('Browser preview') && (await count(page)) === 2, `${await count(page)} records`);
-  check('rows with blank lat/lng are skipped (no Null Island markers)', !(await page.evaluate(() => cid.state.clients.some((c) => c.lat === 0 || c.lng === 0))));
+  check('browser-only CSV preview loads every row', (await page.textContent('#dataStatus')).includes('Browser preview') && (await count(page)) === 3 && (await markerCount(page)) === 2, `${await count(page)} records`);
+  check('rows with blank lat/lng are off-map, not Null Island markers', await page.evaluate(() => {
+    const off = cid.state.clients.filter((c) => !c.mapped);
+    const pins = [...cid.markers.values()].map((m) => m.marker.getLatLng());
+    return off.length === 1 && off[0].name === 'Preview NoCoords' && !pins.some((p) => p.lat === 0 || p.lng === 0);
+  }));
   const skipToast = await page.textContent('#toast');
-  check('preview toast reports skipped no-coord rows', /skipped without usable lat\/lng/.test(skipToast), skipToast.slice(0, 90));
+  check('preview toast reports the off-map row', /2 on the map, 1 off-map/.test(skipToast), skipToast.slice(0, 90));
   check('preview debrief shows in the dialog', /Browser-only preview/.test(await page.textContent('#importBody')));
   await page.setInputFiles('#fileInput', { name: 'export.xlsx', mimeType: 'application/octet-stream', buffer: Buffer.from('PK-fake') });
   await settle(page, 400);

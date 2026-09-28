@@ -2,6 +2,7 @@
 /data/raw/**
 /data/processed/**
 /dashboard/clients.json
+/dashboard/unmapped.json
 
 # Keep folder placeholders if added later
 !/data/raw/

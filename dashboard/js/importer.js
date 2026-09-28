@@ -63,7 +63,7 @@ export function createImporter({ isServerOnline, onServerImported, onPreview, on
         ? `Geocoded ${s.geocoded || 0} addresses (${s.geocoded_exact_street || 0} street-exact, ${s.geocoded_approximate || 0} approximate). ${s.failed_geocodes || 0} failed, ${s.kept_existing_coordinates || 0} kept their existing coordinates.`
         : '',
       dropped
-        ? `${dropped} record${dropped === 1 ? ' has' : 's have'} no coordinates and stayed off the map. Add lat/lng columns, or export GOOGLE_MAPS_API_KEY before starting server.py so street addresses get geocoded.`
+        ? `${dropped} record${dropped === 1 ? ' has' : 's have'} no coordinates, so ${dropped === 1 ? 'it is' : 'they are'} in the roster with an Off-map tag but not on the map. Add lat/lng columns, or export GOOGLE_MAPS_API_KEY before starting server.py so street addresses get geocoded.`
         : '',
       (out.saved || []).some((p) => p.includes('google_takeout'))
         ? 'ZIP files were saved to data/raw/google_takeout/, but the importer does not read that folder yet.'
@@ -83,18 +83,19 @@ export function createImporter({ isServerOnline, onServerImported, onPreview, on
       <div class="dlg-row"><button class="btn btn--signal" data-imp="done">View territory</button><button class="btn" data-imp="again">Import more</button></div>`;
   }
 
-  function showPreviewDebrief({ files, rows, mapped, skipped, unsupported, reason }) {
+  function showPreviewDebrief({ files, rows, mapped, offMap, skipped, unsupported, reason }) {
     body.innerHTML = `
       <p class="mode-note" data-tone="warn"><b>Browser-only preview.</b> ${esc(reason)} Nothing was saved. Start <code>python3 server.py</code> to keep imports.</p>
       <div class="debrief">
         ${stat(files, 'Files read')}
         ${stat(rows, 'Rows read')}
         ${stat(mapped, 'On the map')}
-        ${stat(skipped, 'No lat/lng', skipped > 0)}
+        ${stat(offMap, 'Off-map', offMap > 0)}
         ${stat(unsupported.length, 'Need server', unsupported.length > 0)}
       </div>
       <ul class="debrief-lines">
-        ${skipped ? `<li>${skipped} row${skipped === 1 ? '' : 's'} skipped without usable lat/lng. The server importer can geocode street addresses when GOOGLE_MAPS_API_KEY is set.</li>` : ''}
+        ${offMap ? `<li>${offMap} row${offMap === 1 ? ' has' : 's have'} no usable lat/lng, so ${offMap === 1 ? 'it is' : 'they are'} in the roster as off-map. The server importer can geocode street addresses when GOOGLE_MAPS_API_KEY is set.</li>` : ''}
+        ${skipped ? `<li>${skipped} empty row${skipped === 1 ? '' : 's'} (no name, phone or address) skipped.</li>` : ''}
         ${unsupported.length ? `<li>${esc(unsupported.map((f) => f.name).join(', '))} need the local server.</li>` : ''}
       </ul>
       <div class="dlg-row"><button class="btn btn--signal" data-imp="done">View territory</button><button class="btn" data-imp="again">Import more</button></div>`;
@@ -151,9 +152,11 @@ export function createImporter({ isServerOnline, onServerImported, onPreview, on
       return;
     }
     const { records, skipped } = D.cleanRows(rows);
+    const mapped = records.filter((r) => r.mapped).length;
+    const offMap = records.length - mapped;
     onPreview(records);
-    showPreviewDebrief({ files: readable.length, rows: rows.length, mapped: records.length, skipped, unsupported, reason });
-    toast(`Loaded ${records.length} of ${rows.length} rows in browser-only preview.${skipped > 0 ? ` ${skipped} row(s) skipped without usable lat/lng.` : ''} Run python3 server.py to keep imports.`, 'warn');
+    showPreviewDebrief({ files: readable.length, rows: rows.length, mapped, offMap, skipped, unsupported, reason });
+    toast(`Loaded ${records.length} of ${rows.length} rows in browser-only preview: ${mapped} on the map${offMap ? `, ${offMap} off-map (no lat/lng)` : ''}. Run python3 server.py to keep imports.`, 'warn');
   }
 
   function downloadTemplate() {

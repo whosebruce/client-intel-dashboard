@@ -43,14 +43,18 @@ export function normalizeRecord(r, i = 0) {
 
 const hasCoords = (r) => Number.isFinite(r.lat) && Number.isFinite(r.lng) && Math.abs(r.lat) <= 90 && Math.abs(r.lng) <= 180;
 
-// Returns only records that can sit on the map, plus how many were skipped.
+// Every row with a name, phone or address becomes a record. Records without
+// usable coordinates get mapped=false: they're listed in the roster as
+// off-map but never drawn (no Null Island markers). skipped counts empty rows.
 export function cleanRows(rows) {
   const list = Array.isArray(rows) ? rows : [];
   const seen = new Map();
   const records = [];
   list.forEach((raw, i) => {
     const rec = normalizeRecord(raw, i);
-    if (!hasCoords(rec)) return;
+    if (rec.name === 'Unknown client' && !rec.phone && !rec.address) return;
+    rec.mapped = hasCoords(rec);
+    if (!rec.mapped) { rec.lat = NaN; rec.lng = NaN; }
     const n = seen.get(rec.id) || 0;
     seen.set(rec.id, n + 1);
     if (n) rec.id = `${rec.id}~${n + 1}`;
@@ -164,8 +168,9 @@ export function queueGroups(rows, today) {
   return groups;
 }
 
-export function matches(rec, { status = 'all', query = '' } = {}) {
+export function matches(rec, { status = 'all', query = '', where = 'all' } = {}) {
   if (status !== 'all' && rec.status !== status) return false;
+  if (where === 'offmap' && rec.mapped) return false;
   const q = norm(query).toLowerCase();
   if (!q) return true;
   const hay = [rec.name, rec.address, rec.city, rec.phone, rec.notes, rec.value, rec.follow_up].join(' ').toLowerCase();
@@ -244,8 +249,9 @@ export function distanceMiles(a, b) {
 }
 
 export function nearest(rec, rows, n = 5) {
+  if (!rec.mapped) return [];
   return rows
-    .filter((r) => r.id !== rec.id)
+    .filter((r) => r.id !== rec.id && r.mapped)
     .map((r) => ({ rec: r, miles: distanceMiles(rec, r) }))
     .sort((a, b) => a.miles - b.miles)
     .slice(0, n);
@@ -265,8 +271,11 @@ export function callSheet(rec, today) {
   ].filter((line) => line !== undefined && line !== '').join('\n');
 }
 
-export const directionsUrl = (rec) =>
-  `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(rec.address || `${rec.lat},${rec.lng}`)}`;
+// null when there's nothing to route to (off-map and no address).
+export function directionsUrl(rec) {
+  const dest = rec.address || (rec.mapped ? `${rec.lat},${rec.lng}` : '');
+  return dest ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}` : null;
+}
 
 export const telHref = (phone) => `tel:${String(phone).replace(/[^\d+]/g, '')}`;
 export const smsHref = (phone) => `sms:${String(phone).replace(/[^\d+]/g, '')}`;
