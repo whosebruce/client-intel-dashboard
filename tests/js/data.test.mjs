@@ -6,7 +6,7 @@ import * as D from '../../dashboard/js/data.js';
 import { demoRecords } from '../../dashboard/js/demo.js';
 
 const TODAY = new Date(2026, 8, 28); // 2026-09-28, local
-const rec = (over = {}) => ({ ...D.normalizeRecord({ name: 'Test', lat: 32.7, lng: -117.1 }), ...over });
+const rec = (over = {}) => ({ ...D.normalizeRecord({ name: 'Test', lat: 32.7, lng: -117.1 }), mapped: true, ...over });
 
 test('normalizeRecord maps messy CRM headers', () => {
   const r = D.normalizeRecord({ 'Customer Name': 'Jane Q', 'Service Address': '1 Demo St', 'Phone Number': '555-0100', Balance: '$450', 'Next Call': '2026-10-01', Status: 'Due', Latitude: '32.7', Longitude: '-117.1' });
@@ -25,17 +25,32 @@ test('unknown status falls back to lead', () => {
   assert.equal(D.normalizeStatus('PAID'), 'paid');
 });
 
-test('cleanRows skips blank or out-of-range coordinates and de-duplicates ids', () => {
+test('cleanRows keeps coordinate-less rows as off-map, skips empty rows, de-duplicates ids', () => {
   const { records, skipped } = D.cleanRows([
     { id: 'a', name: 'One', lat: '32.7', lng: '-117.1' },
     { id: 'a', name: 'Two', lat: '32.8', lng: '-117.2' },
     { name: 'Blank', lat: '', lng: '' },
     { name: 'Bad', lat: '132', lng: '-117' },
+    { notes: 'nothing to identify this row' },
   ]);
-  assert.equal(records.length, 2);
-  assert.equal(skipped, 2);
+  assert.equal(records.length, 4);
+  assert.equal(skipped, 1);
   assert.notEqual(records[0].id, records[1].id);
-  assert.ok(records.every((r) => r.lat !== 0 && r.lng !== 0));
+  assert.deepEqual(records.map((r) => r.mapped), [true, true, false, false]);
+  const bad = records.find((r) => r.name === 'Bad');
+  assert.ok(Number.isNaN(bad.lat) && Number.isNaN(bad.lng)); // never drawn, never Null Island
+  assert.ok(D.toCsv([bad]).includes('"Bad","","",""'));
+});
+
+test('off-map records: filter, no nearby, route only with an address', () => {
+  const off = rec({ id: 'off', mapped: false, lat: NaN, lng: NaN, address: '9 Nowhere Rd' });
+  const on = rec({ id: 'on' });
+  assert.ok(D.matches(off, { where: 'offmap' }));
+  assert.ok(!D.matches(on, { where: 'offmap' }));
+  assert.deepEqual(D.nearest(off, [on], 5), []);
+  assert.deepEqual(D.nearest(on, [off], 5), []);
+  assert.equal(D.directionsUrl(off), 'https://www.google.com/maps/dir/?api=1&destination=9%20Nowhere%20Rd');
+  assert.equal(D.directionsUrl({ ...off, address: '' }), null);
 });
 
 test('parseCsv handles quotes, embedded commas, CRLF and a BOM', () => {
@@ -135,13 +150,14 @@ test('esc neutralizes HTML', () => {
   assert.equal(D.esc('<img src=x onerror="a">'), '&lt;img src=x onerror=&quot;a&quot;&gt;');
 });
 
-test('demo data is synthetic, mappable and has a same-spot pair', () => {
+test('demo data is synthetic, has a same-spot pair and two off-map records', () => {
   const rows = demoRecords(TODAY);
   const { records, skipped } = D.cleanRows(rows);
-  assert.equal(records.length, 36);
+  assert.equal(records.length, 38);
   assert.equal(skipped, 0);
+  assert.equal(records.filter((r) => !r.mapped).length, 2);
   assert.ok(rows.every((r) => /^555-01\d\d$/.test(r.phone)));
-  assert.equal(D.spreadOverlaps(records).get(rows[1].id).twins, 2);
+  assert.equal(D.spreadOverlaps(records.filter((r) => r.mapped)).get(rows[1].id).twins, 2);
   const groups = D.queueGroups(records, TODAY);
   assert.ok(groups.overdue.length && groups.today.length && groups.week.length);
 });
