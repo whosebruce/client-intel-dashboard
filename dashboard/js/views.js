@@ -39,7 +39,7 @@ export function renderNotices(notices) {
 export function renderList(rows, { selectedId, today, shown, total, hasData }) {
   $('listHead').innerHTML = hasData ? `<span>Showing ${shown} of ${total}</span><span>${shown ? '' : 'No match'}</span>` : '';
   if (!hasData) {
-    $('list').innerHTML = `<li class="empty empty--hazard">
+    $('list').innerHTML = `<li class="empty">
       <b>No records loaded</b>
       <p>Import a CRM export, spreadsheet, JSON file or SMS backup. Everything stays on this machine.</p>
       <div class="empty-actions"><button class="btn btn--signal" data-action="import">Import data</button><button class="btn" data-action="demo">Load demo data</button></div>

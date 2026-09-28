@@ -19,7 +19,7 @@ Open `http://127.0.0.1:8766/`, then click **Import** (or drop files anywhere on 
 
 ## What the dashboard does
 
-The screen is three panels around the map, styled in the Bruce Works Field Manual system ([`docs/DESIGN.md`](docs/DESIGN.md)).
+The screen is three panels around the map, with flat square panels, mono labels and one yellow action ([`docs/DESIGN.md`](docs/DESIGN.md)).
 
 - **Roster.** Status tiles for All, Paid, Due and Leads show the count and dollar total and double as the status filter. Below them are a ratio bar, search (name, address, notes or phone digits), a sort menu (follow-up, name, value, last contact, city) and **Map area**, which limits the list to what's on screen.
 - **Map.** One clickable marker per mapped record, colored by status, with a red corner when the follow-up is overdue. There's no heatmap and no clustering. Zoomed out, markers shrink to small squares; from zoom 12 they show initials. **Fit territory** frames the filtered markers.
@@ -117,7 +117,7 @@ A Playwright suite in [`tests/browser/`](tests/browser/README.md) clicks through
 server.py                local web server: dashboard, /api/upload, /api/health, /api/summary
 scripts/ingest.py        importer: CSV, XLSX, JSON and SMS XML to clients.json
 dashboard/index.html     page shell
-dashboard/css/           Field Manual styles and vendored font faces
+dashboard/css/           styles and vendored font faces
 dashboard/js/main.js     state, layout, keyboard and event wiring
 dashboard/js/data.js     pure data logic (parsing, filters, follow-ups, fan-out), unit tested
 dashboard/js/map.js      Leaflet markers, selection and fit

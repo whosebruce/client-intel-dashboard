@@ -1,6 +1,6 @@
 # Dashboard design
 
-The dashboard uses the Bruce Works "Field Manual" system: military-brief labels, flat steel-like panels, one yellow action. Keep new UI inside these rules so it reads as one product.
+The dashboard borrows the type and palette of the Bruce Works "Field Manual" system (mono labels, flat steel-like panels, one yellow action) without its brand marks. Keep new UI inside these rules so it reads as one product.
 
 ## Tokens
 
@@ -12,7 +12,7 @@ All colors are CSS custom properties in `dashboard/css/app.css`, defined twice: 
 | `--panel` / `--panel-2` / `--panel-3` | `#1c2023` → `#2a3033` | `#E8E4DA` → `#F6F4EE` | panel, raised, selected |
 | `--line` | `#3A4139` olive | `#b9b3a4` | 2px panel borders |
 | `--text` / `--text-2` / `--text-3` | bone / mist / steel | night / ink / ink-soft | primary, body, labels |
-| `--signal` | `#FEB019` | `#FEB019` | the Import button, the selection ring, focus outlines, hazard strips |
+| `--signal` | `#FEB019` | `#FEB019` | the Import button, the selection ring, focus outlines |
 | `--alert` / `--alert-text` | `#C7392B` / `#F07563` | `#C7392B` / `#A92E22` | overdue follow-ups and section numbers only |
 | `--paid` / `--unpaid` / `--lead` | `#199e70` / `#c98500` / `#3987e5` | `#1baf7a` / `#eda100` / `#2a78d6` | status fills |
 
@@ -31,7 +31,8 @@ Fonts are Latin subsets vendored in `dashboard/vendor/fonts/` (OFL), so the dash
 
 ## Rules
 
-- Square corners everywhere. No border radius, no shadows, no gradients. The only stripes are the 45° hazard strips.
+- Square corners everywhere. No border radius, no shadows, no gradients.
+- No hazard or caution-tape strips. They are a Bruce Works brand mark and this dashboard keeps its own identity.
 - One Signal Yellow action per screen (Import). Selection and keyboard focus also use Signal Yellow, as an outline rather than a fill.
 - Section headers are a red number, a mono label and a hairline: `01 ROSTER`, `02 RECORD`, `03 FOLLOW-UP QUEUE`.
 - No emoji and no icon font. Use text labels and the glyphs `▸ · // ‹ ›`.
